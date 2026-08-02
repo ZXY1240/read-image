@@ -1,0 +1,23 @@
+# Python and uv caches
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+.worktrees/
+worktrees/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
