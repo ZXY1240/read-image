@@ -1,0 +1,23 @@
+{
+  "name": "read-image",
+  "version": "0.3.0",
+  "description": "Read images, video, web pages, and Windows screenshots through Doubao Seed 2.1 Turbo for text-only main models.",
+  "author": {
+    "name": "ZXY1240"
+  },
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Read Image",
+    "shortDescription": "Read local images, video, web pages, and Windows screenshots with Doubao vision",
+    "longDescription": "Adds read_image, read_images_batch, read_video, capture_page, and native Windows capture_windows/list_windows MCP tools.",
+    "developerName": "ZXY1240",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ],
+    "defaultPrompt": [
+      "Read this local image and extract the requested content."
+    ]
+  }
+}

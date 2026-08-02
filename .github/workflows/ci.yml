@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+      - name: Install dependencies
+        run: uv sync --extra dev
+      - name: Lint
+        run: uv run ruff check .
+      - name: Type check
+        run: uv run mypy read_image
+      - name: Test
+        run: uv run pytest
+      - name: Validate plugin
+        run: uv run python scripts/validate_plugin.py
+      - name: Prepare public release copy
+        run: uv run python scripts/prepare_public_release.py --output "$RUNNER_TEMP/read-image-public"
+      - name: Validate public release copy
+        run: uv run python scripts/validate_plugin.py --root "$RUNNER_TEMP/read-image-public" --public

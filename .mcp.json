@@ -1,0 +1,74 @@
+{
+  "mcpServers": {
+    "read-image": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        ".",
+        "read-image-vision"
+      ],
+      "cwd": ".",
+      "env_vars": [
+        "READ_IMAGE_API_KEY",
+        "ARK_API_KEY",
+        "DOUBAO_API_KEY",
+        "VISION_API_KEY",
+        "READ_IMAGE_BASE_URL",
+        "READ_IMAGE_MODEL",
+        "READ_IMAGE_MAX_DIMENSION",
+        "READ_IMAGE_FORMAT",
+        "READ_IMAGE_JPEG_QUALITY",
+        "READ_IMAGE_TIMEOUT_SEC",
+        "READ_IMAGE_BATCH_WORKERS",
+        "READ_IMAGE_BATCH_TIMEOUT_SEC",
+        "READ_IMAGE_CACHE_MAX_ENTRIES",
+        "READ_IMAGE_LOG_LEVEL",
+        "READ_IMAGE_LANGUAGE",
+        "READ_VIDEO_MAX_MB",
+        "READ_VIDEO_BASE64_MAX_MB",
+        "READ_VIDEO_DOWNLOAD_MAX_MB",
+        "READ_VIDEO_FILES_API_TIMEOUT_SEC",
+        "READ_VIDEO_TIMEOUT_SEC"
+      ],
+      "tool_timeout_sec": 900
+    },
+    "capture-page": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        ".",
+        "read-image-capture-page"
+      ],
+      "cwd": ".",
+      "env_vars": [
+        "CAPTURE_PAGE_TIMEOUT_SEC",
+        "CAPTURE_PAGE_BROWSER",
+        "CAPTURE_PAGE_WAIT_UNTIL",
+        "CAPTURE_PAGE_SETTLE_MS",
+        "CAPTURE_PAGE_MAX_FULL_PAGE_HEIGHT",
+        "READ_IMAGE_LOG_LEVEL"
+      ],
+      "tool_timeout_sec": 240
+    },
+    "windows-capture": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        ".",
+        "read-image-windows-capture"
+      ],
+      "cwd": ".",
+      "env_vars": [
+        "WINDOWS_CAPTURE_DIR",
+        "READ_IMAGE_LOG_LEVEL"
+      ],
+      "tool_timeout_sec": 120
+    }
+  }
+}
