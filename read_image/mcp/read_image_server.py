@@ -30,7 +30,7 @@ from read_image.config import (
 from read_image.drag import resolve_dragged_path, scan_dragged_media
 from read_image.errors import ReadImageError, tr
 from read_image.logging import configure_logging
-from read_image.mcp.common import run_cli
+from read_image.mcp.common import EXTERNAL_SEND_ANNOTATIONS, run_cli
 from read_image.media import analyze_video, prepare_image_variants
 from read_image.profiles import profile_for_mode
 from read_image.workers import run_video_task
@@ -82,7 +82,7 @@ def _run_image_with_cache(
     return result
 
 
-@mcp.tool()
+@mcp.tool(annotations=EXTERNAL_SEND_ANNOTATIONS)
 def read_image(
     image: Annotated[
         str,
@@ -113,7 +113,7 @@ def read_image(
     return _format_slice_results(results)
 
 
-@mcp.tool()
+@mcp.tool(annotations=EXTERNAL_SEND_ANNOTATIONS)
 def read_clipboard_image(
     task: Annotated[
         str,
@@ -224,7 +224,7 @@ def _format_drag_candidates(kind: str, candidates: list[Path]) -> str:
     return "\n".join(lines)
 
 
-@mcp.tool()
+@mcp.tool(annotations=EXTERNAL_SEND_ANNOTATIONS)
 def read_dragged_image(
     task: Annotated[
         str,
@@ -267,7 +267,7 @@ def read_dragged_image(
     return _format_drag_candidates("图片", candidates)
 
 
-@mcp.tool()
+@mcp.tool(annotations=EXTERNAL_SEND_ANNOTATIONS)
 def read_dragged_video(
     task: Annotated[
         str,
@@ -310,7 +310,7 @@ def read_dragged_video(
     return _format_drag_candidates("视频", candidates)
 
 
-@mcp.tool()
+@mcp.tool(annotations=EXTERNAL_SEND_ANNOTATIONS)
 def read_video(
     video: Annotated[
         str,
@@ -368,7 +368,7 @@ def _format_batch_results(
     return "\n\n".join(sections)
 
 
-@mcp.tool()
+@mcp.tool(annotations=EXTERNAL_SEND_ANNOTATIONS)
 def read_images_batch(
     images: Annotated[
         list[str],

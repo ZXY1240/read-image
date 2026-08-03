@@ -17,7 +17,7 @@ from pydantic import Field
 
 from read_image.errors import ReadImageError, WindowsCaptureError, tr
 from read_image.logging import configure_logging
-from read_image.mcp.common import run_cli
+from read_image.mcp.common import LOCAL_WRITE_ANNOTATIONS, READ_ONLY_ANNOTATIONS, run_cli
 from read_image.paths import ensure_allowed_output_dir
 
 mcp = FastMCP("windows-capture")
@@ -115,7 +115,7 @@ def _safe_filename(value: str) -> str:
     return cleaned.strip("._") or "window"
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_ANNOTATIONS)
 def list_windows() -> str:
     """列出当前所有可见 Windows 窗口标题。"""
     _require_windows()
@@ -126,7 +126,7 @@ def list_windows() -> str:
     return "\n".join(f"{index}. {title}" for index, title in enumerate(titles, start=1))
 
 
-@mcp.tool()
+@mcp.tool(annotations=LOCAL_WRITE_ANNOTATIONS)
 def capture_windows(
     mode: Annotated[
         str,

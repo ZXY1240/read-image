@@ -16,7 +16,7 @@ from pydantic import Field
 
 from read_image.errors import CapturePageError, ReadImageError, tr
 from read_image.logging import configure_logging
-from read_image.mcp.common import run_cli
+from read_image.mcp.common import EXTERNAL_SEND_ANNOTATIONS, run_cli
 from read_image.paths import ensure_allowed_output_dir
 from read_image.urls import validate_remote_url
 
@@ -306,7 +306,7 @@ async def _capture_page(
     return "\n".join(f"{index}. {path}" for index, path in enumerate(paths, start=1))
 
 
-@mcp.tool()
+@mcp.tool(annotations=EXTERNAL_SEND_ANNOTATIONS)
 async def capture_page(
     url: Annotated[str, Field(description="要打开并截图的网页 URL。")],
     actions: Annotated[

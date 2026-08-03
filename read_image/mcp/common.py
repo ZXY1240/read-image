@@ -4,7 +4,27 @@ import argparse
 import sys
 from collections.abc import Callable
 
+from mcp.types import ToolAnnotations
+
 from read_image.errors import PluginError
+
+READ_ONLY_ANNOTATIONS = ToolAnnotations(
+    readOnlyHint=True,
+    openWorldHint=False,
+    destructiveHint=False,
+)
+
+EXTERNAL_SEND_ANNOTATIONS = ToolAnnotations(
+    readOnlyHint=False,
+    openWorldHint=True,
+    destructiveHint=False,
+)
+
+LOCAL_WRITE_ANNOTATIONS = ToolAnnotations(
+    readOnlyHint=False,
+    openWorldHint=False,
+    destructiveHint=False,
+)
 
 
 def configure_stdio() -> None:
