@@ -2,8 +2,22 @@
   "name": "read-image",
   "version": "1.0.0",
   "description": "Read images, video, web pages, and Windows screenshots through Doubao, GLM, or Qwen-compatible vision APIs for Codex and Claude Code.",
+  "homepage": "https://github.com/ZXY1240/read-image",
+  "repository": "https://github.com/ZXY1240/read-image",
+  "license": "MIT",
+  "keywords": [
+    "vision",
+    "mcp",
+    "read-image",
+    "read-video",
+    "screenshot",
+    "doubao",
+    "glm",
+    "qwen"
+  ],
   "author": {
-    "name": "ZXY1240"
+    "name": "ZXY1240",
+    "url": "https://github.com/ZXY1240"
   },
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
@@ -12,6 +26,7 @@
     "shortDescription": "Read local images, video, web pages, and Windows screenshots with Doubao vision",
     "longDescription": "Adds read_image, read_images_batch, read_video, capture_page, and native Windows capture_windows/list_windows MCP tools.",
     "developerName": "ZXY1240",
+    "composerIcon": "./assets/icon.svg",
     "category": "Productivity",
     "capabilities": [
       "Read"
