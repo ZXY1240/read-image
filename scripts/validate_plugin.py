@@ -6,7 +6,10 @@ import re
 import sys
 from pathlib import Path
 
-KEY_PREFIX = "ark" + "-"
+SECRET_KEY_RE = re.compile(
+    r"(?i)\b(ark|sk)-[a-z0-9_-]{12,}\b|"
+    r"api[_-]?key\s*[:=]\s*['\"]?[a-z0-9_-]{20,}"
+)
 
 
 def _python_version(text: str) -> str | None:
@@ -82,11 +85,15 @@ def main() -> int:
                 "READ_IMAGE_OPENAI_THINKING_PARAM",
                 "READ_IMAGE_PROFILES_JSON",
                 "READ_IMAGE_CACHE_USE_TASK",
+                "READ_IMAGE_CACHE_TTL_SEC",
                 "READ_IMAGE_EXTREME_ASPECT_RATIO_LIMIT",
                 "READ_IMAGE_ALLOWED_OUTPUT_DIRS",
                 "READ_IMAGE_ALLOW_PRIVATE_URLS",
                 "READ_IMAGE_VIDEO_WORKERS",
                 "READ_VIDEO_WORKERS",
+                "READ_DRAG_WINDOW_MIN",
+                "READ_DRAG_PATTERNS",
+                "READ_DRAG_DIRS",
                 "READ_IMAGE_BATCH_TIMEOUT_SEC",
                 "READ_VIDEO_BASE64_MAX_MB",
                 "READ_VIDEO_DOWNLOAD_MAX_MB",
@@ -116,10 +123,16 @@ def main() -> int:
         )
         if "def read_clipboard_image" not in read_image_server_source:
             errors.append("read_image_server.py must define read_clipboard_image")
+        if "def read_dragged_image" not in read_image_server_source:
+            errors.append("read_image_server.py must define read_dragged_image")
+        if "def read_dragged_video" not in read_image_server_source:
+            errors.append("read_image_server.py must define read_dragged_video")
         if '"--clipboard"' not in read_image_server_source:
             errors.append("read_image_server.py must expose --clipboard CLI flag")
     if not (root / "read_image" / "providers" / "factory.py").is_file():
         errors.append("Missing read_image.providers.factory")
+    if not (root / "read_image" / "drag.py").is_file():
+        errors.append("Missing read_image.drag")
     if not (root / "skills" / "read-image" / "SKILL.md").is_file():
         errors.append("Missing skills/read-image/SKILL.md")
     if not (root / "CLAUDE.md").is_file():
@@ -163,6 +176,12 @@ def main() -> int:
         errors.append("Missing scripts/install_claude_plugin.ps1")
     if not (root / "scripts" / "save_clipboard_image.ps1").is_file():
         errors.append("Missing scripts/save_clipboard_image.ps1")
+
+    readme_path = root / "README.md"
+    if readme_path.is_file():
+        readme_text = readme_path.read_text(encoding="utf-8")
+        if r"C:\Users\admin" in readme_text or "C:/Users/admin" in readme_text:
+            errors.append("README.md must not contain local machine absolute paths")
 
     versions: list[str] = []
     init_path = root / "read_image" / "__init__.py"
@@ -212,7 +231,7 @@ def main() -> int:
                 text = path.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
-            if KEY_PREFIX in text.lower():
+            if path.name != ".env.example" and SECRET_KEY_RE.search(text):
                 errors.append(f"Public copy contains API key text: {path}")
 
     if errors:

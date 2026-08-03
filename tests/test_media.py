@@ -842,7 +842,7 @@ def test_video_conversion_depth_guard(
     monkeypatch.setattr(
         provider,
         "call_video",
-        lambda video_url, task, mode, timeout_sec=None, file_id=None, gate=None: reject(),
+        lambda video_url, task, mode, timeout_sec=None, file_id=None: reject(),
     )
     with pytest.raises(ReadImageError) as exc_info:
         _analyze_local_video_files(

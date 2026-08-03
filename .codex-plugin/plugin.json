@@ -1,6 +1,6 @@
 {
   "name": "read-image",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Read images, video, web pages, and Windows screenshots through Doubao, GLM, or Qwen-compatible vision APIs for Codex and Claude Code.",
   "author": {
     "name": "ZXY1240"

@@ -10,7 +10,11 @@ from read_image.config import (
     DEFAULT_VIDEO_FILES_API_TIMEOUT_SEC,
     DEFAULT_VIDEO_WORKERS,
     api_key,
+    cache_ttl_sec,
     cache_use_task,
+    drag_dirs,
+    drag_patterns,
+    drag_window_minutes,
     extreme_aspect_ratio_limit,
     openai_thinking_param,
     provider_name,
@@ -139,13 +143,42 @@ def test_video_worker_count_prefers_new_env(
     assert video_worker_count() == 2
 
 
-def test_cache_use_task_defaults_to_false(
+def test_cache_use_task_defaults_to_true(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("READ_IMAGE_CACHE_USE_TASK", raising=False)
-    assert cache_use_task() is False
+    assert cache_use_task() is True
     monkeypatch.setenv("READ_IMAGE_CACHE_USE_TASK", "1")
     assert cache_use_task() is True
+    monkeypatch.setenv("READ_IMAGE_CACHE_USE_TASK", "0")
+    assert cache_use_task() is False
+
+
+def test_cache_ttl_sec_default_and_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("READ_IMAGE_CACHE_TTL_SEC", raising=False)
+    assert cache_ttl_sec() == 300
+    monkeypatch.setenv("READ_IMAGE_CACHE_TTL_SEC", "60")
+    assert cache_ttl_sec() == 60
+
+
+def test_drag_config_defaults_and_overrides(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("READ_DRAG_WINDOW_MIN", raising=False)
+    monkeypatch.delenv("READ_DRAG_PATTERNS", raising=False)
+    monkeypatch.delenv("READ_DRAG_DIRS", raising=False)
+    assert drag_window_minutes() == 30
+    assert "*.tmp" in drag_patterns()
+    assert drag_dirs()
+
+    monkeypatch.setenv("READ_DRAG_WINDOW_MIN", "10")
+    monkeypatch.setenv("READ_DRAG_PATTERNS", "claude-*,*.tmp")
+    monkeypatch.setenv("READ_DRAG_DIRS", "C:\\custom-drag")
+    assert drag_window_minutes() == 10
+    assert drag_patterns() == ["claude-*", "*.tmp"]
+    assert drag_dirs()[-1] == "C:\\custom-drag"
 
 
 def test_openai_thinking_param_default_and_override(

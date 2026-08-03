@@ -9,7 +9,6 @@ from typing import Any
 
 import httpx
 
-from read_image.concurrency import ConcurrencyGate
 from read_image.config import MAX_RATE_LIMIT_RETRIES, MAX_TIMEOUT_RETRIES, api_key, env_int
 from read_image.errors import (
     ReadImageError,
@@ -187,7 +186,6 @@ class VisionProvider(ABC):
         task: str,
         mode: str | None,
         timeout_sec: int | None = None,
-        gate: ConcurrencyGate | None = None,
         file_id: str | None = None,
     ) -> str:
         if file_id is not None and not self.supports_video_files:
@@ -201,29 +199,19 @@ class VisionProvider(ABC):
         timeout_attempts = 0
         while True:
             try:
-                if gate:
-                    gate.acquire()
-                try:
-                    result = self._post_chat(
-                        self.build_payload(
-                            kind,
-                            content_url,
-                            task,
-                            mode,
-                            file_id=file_id,
-                        ),
-                        self._timeout_sec(mode, kind, timeout_sec),
+                result = self._post_chat(
+                    self.build_payload(
                         kind,
-                    )
-                finally:
-                    if gate:
-                        gate.release()
-                if gate:
-                    gate.note_success()
+                        content_url,
+                        task,
+                        mode,
+                        file_id=file_id,
+                    ),
+                    self._timeout_sec(mode, kind, timeout_sec),
+                    kind,
+                )
                 return result
             except VisionRateLimitError as exc:
-                if gate:
-                    gate.note_rate_limit()
                 if rate_attempts >= MAX_RATE_LIMIT_RETRIES:
                     raise
                 time.sleep(_retry_delay(rate_attempts, exc.retry_after))
@@ -241,7 +229,6 @@ class VisionProvider(ABC):
         mode: str | None,
         mime_type: str = "image/jpeg",
         timeout_sec: int | None = None,
-        gate: ConcurrencyGate | None = None,
     ) -> str:
         data_url = f"data:{mime_type};base64,{base64.b64encode(image_bytes).decode('ascii')}"
         return self.call_with_retries(
@@ -250,7 +237,6 @@ class VisionProvider(ABC):
             task,
             mode,
             timeout_sec=timeout_sec,
-            gate=gate,
         )
 
     def call_video(
@@ -260,7 +246,6 @@ class VisionProvider(ABC):
         mode: str | None,
         timeout_sec: int | None = None,
         file_id: str | None = None,
-        gate: ConcurrencyGate | None = None,
     ) -> str:
         return self.call_with_retries(
             "video",
@@ -268,7 +253,6 @@ class VisionProvider(ABC):
             task,
             mode,
             timeout_sec=timeout_sec,
-            gate=gate,
             file_id=file_id,
         )
 

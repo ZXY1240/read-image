@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import pytest
+
+from read_image import cache
 from read_image.cache import ImageCache, image_cache_key
 
 
@@ -12,13 +15,13 @@ def test_image_cache_key_changes_with_inputs() -> None:
     assert len({key_a, key_b, key_c, key_d, key_e}) == 5
 
 
-def test_image_cache_key_ignores_task_by_default() -> None:
+def test_image_cache_key_includes_task_by_default() -> None:
     key_a = image_cache_key(b"a", "standard", "model", "doubao", task="task1")
     key_b = image_cache_key(b"a", "standard", "model", "doubao", task="task2")
-    assert key_a == key_b
+    assert key_a != key_b
 
 
-def test_image_cache_key_can_opt_into_task() -> None:
+def test_image_cache_key_can_disable_task() -> None:
     key_a = image_cache_key(
         b"a",
         "standard",
@@ -33,9 +36,21 @@ def test_image_cache_key_can_opt_into_task() -> None:
         "model",
         "doubao",
         task="task2",
-        use_task=True,
+        use_task=False,
     )
     assert key_a != key_b
+
+
+def test_cache_ttl_expires(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clock = [0.0]
+    monkeypatch.setattr(cache.time, "monotonic", lambda: clock[0])
+    image_cache = ImageCache(ttl_sec=10)
+    image_cache.put("1", "a")
+    assert image_cache.get("1") == "a"
+    clock[0] = 11
+    assert image_cache.get("1") is None
 
 
 def test_cache_evicts_lru() -> None:

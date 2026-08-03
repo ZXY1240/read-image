@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import sys
 from pathlib import Path
 
-KEY_PREFIX = "ark" + "-"
+SECRET_KEY_RE = re.compile(
+    r"(?i)\b(ark|sk)-[a-z0-9_-]{12,}\b|"
+    r"api[_-]?key\s*[:=]\s*['\"]?[a-z0-9_-]{20,}"
+)
 
 IGNORE_PATTERNS = shutil.ignore_patterns(
     ".git",
@@ -34,7 +38,7 @@ def _scan_for_secrets(root: Path) -> list[str]:
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        if KEY_PREFIX in text.lower():
+        if path.name != ".env.example" and SECRET_KEY_RE.search(text):
             findings.append(str(path.relative_to(root)))
     return findings
 

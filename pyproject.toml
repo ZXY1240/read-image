@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "read-image-plugin"
-version = "0.8.0"
+version = "0.9.0"
 description = "Codex plugin that gives text-only models Doubao vision support for images, video, web pages, and Windows screenshots."
 readme = "README.md"
 requires-python = ">=3.10"

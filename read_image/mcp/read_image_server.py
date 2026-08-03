@@ -23,9 +23,11 @@ from read_image.config import (
     DEFAULT_VIDEO_TASK,
     MAX_BATCH_WORKERS,
     cache_max_entries,
+    cache_ttl_sec,
     cache_use_task,
     env_int,
 )
+from read_image.drag import resolve_dragged_path, scan_dragged_media
 from read_image.errors import ReadImageError, tr
 from read_image.logging import configure_logging
 from read_image.mcp.common import run_cli
@@ -35,7 +37,7 @@ from read_image.workers import run_video_task
 
 mcp = FastMCP("read-image")
 logger = configure_logging("read-image-vision")
-_image_cache = ImageCache(cache_max_entries())
+_image_cache = ImageCache(cache_max_entries(), ttl_sec=cache_ttl_sec())
 BATCH_TIMEOUT_BUFFER_SEC = 30
 CLIPBOARD_SAVE_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "save_clipboard_image.ps1"
 
@@ -53,7 +55,6 @@ def _run_image_with_cache(
     mime_type: str,
     task: str,
     mode: str,
-    gate: api.ConcurrencyGate | None = None,
     timeout_sec: int | None = None,
 ) -> str:
     profile = profile_for_mode(mode)
@@ -75,7 +76,6 @@ def _run_image_with_cache(
         task,
         mode,
         mime_type=mime_type,
-        gate=gate,
         timeout_sec=timeout_sec,
     )
     _image_cache.put(key, result)
@@ -212,6 +212,98 @@ def read_clipboard_image(
             )
         )
     return read_image(str(saved_path), effective_task, mode)
+
+
+def _format_drag_candidates(kind: str, candidates: list[Path]) -> str:
+    lines = [
+        f"找到多个拖拽{kind}候选，请指定 path 参数后重新调用：",
+        "",
+    ]
+    for index, path in enumerate(candidates, start=1):
+        lines.append(f"{index}. {path}")
+    return "\n".join(lines)
+
+
+@mcp.tool()
+def read_dragged_image(
+    task: Annotated[
+        str,
+        Field(description="本次要从拖拽图片中提取或分析的具体内容。"),
+    ] = DEFAULT_TASK,
+    mode: Annotated[
+        str,
+        Field(
+            description=(
+                "识别档位：quick/standard/full/quick_analysis/balanced_analysis/"
+                "deep_analysis，默认 standard。"
+            )
+        ),
+    ] = DEFAULT_MODE,
+    path: Annotated[
+        str | None,
+        Field(description="多候选时指定要识别的拖拽图片路径。"),
+    ] = None,
+) -> str:
+    """扫描最近拖入的图片，单候选自动识别，多候选要求指定 path。"""
+    effective_task = task.strip() if task and task.strip() else DEFAULT_TASK
+    profile_for_mode(mode)
+    if path:
+        selected = resolve_dragged_path(path, "image")
+        return f"已识别拖拽图片：{selected}\n\n{read_image(str(selected), effective_task, mode)}"
+    candidates = scan_dragged_media("image")
+    if not candidates:
+        raise ReadImageError(
+            tr(
+                "没有找到最近拖拽的图片。请先复制图片到剪贴板后调用 read_clipboard_image，"
+                "或保存为文件后调用 read_image。",
+                "No recently dragged image found. Copy the image to the clipboard and call "
+                "read_clipboard_image, or save it to a file and call read_image.",
+            )
+        )
+    if len(candidates) == 1:
+        selected = candidates[0]
+        return f"已识别拖拽图片：{selected}\n\n{read_image(str(selected), effective_task, mode)}"
+    return _format_drag_candidates("图片", candidates)
+
+
+@mcp.tool()
+def read_dragged_video(
+    task: Annotated[
+        str,
+        Field(description="本次要从拖拽视频中提取或分析的具体内容。"),
+    ] = DEFAULT_VIDEO_TASK,
+    mode: Annotated[
+        str,
+        Field(
+            description=(
+                "识别档位：quick/standard/full/quick_analysis/balanced_analysis/"
+                "deep_analysis，默认 standard。"
+            )
+        ),
+    ] = DEFAULT_MODE,
+    path: Annotated[
+        str | None,
+        Field(description="多候选时指定要识别的拖拽视频路径。"),
+    ] = None,
+) -> str:
+    """扫描最近拖入的视频，单候选自动识别，多候选要求指定 path。"""
+    effective_task = task.strip() if task and task.strip() else DEFAULT_VIDEO_TASK
+    profile_for_mode(mode)
+    if path:
+        selected = resolve_dragged_path(path, "video")
+        return f"已识别拖拽视频：{selected}\n\n{read_video(str(selected), effective_task, mode)}"
+    candidates = scan_dragged_media("video")
+    if not candidates:
+        raise ReadImageError(
+            tr(
+                "没有找到最近拖拽的视频。请先把视频保存为文件后调用 read_video。",
+                "No recently dragged video found. Save the video to a file and call read_video.",
+            )
+        )
+    if len(candidates) == 1:
+        selected = candidates[0]
+        return f"已识别拖拽视频：{selected}\n\n{read_video(str(selected), effective_task, mode)}"
+    return _format_drag_candidates("视频", candidates)
 
 
 @mcp.tool()
@@ -441,11 +533,32 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Read the Windows clipboard image and return vision results.",
     )
+    parser.add_argument(
+        "--dragged-image",
+        action="store_true",
+        help="Scan and read a recently dragged image.",
+    )
+    parser.add_argument(
+        "--dragged-video",
+        action="store_true",
+        help="Scan and read a recently dragged video.",
+    )
+    parser.add_argument(
+        "--dragged-path",
+        default=None,
+        help="Explicit dragged media path for --dragged-image/--dragged-video.",
+    )
     return parser
 
 
 def _run_cli_handler(args: argparse.Namespace) -> int:
-    if args.clipboard:
+    if args.dragged_image:
+        task = args.task or DEFAULT_TASK
+        print(read_dragged_image(task, args.mode, path=args.dragged_path))
+    elif args.dragged_video:
+        task = args.task or DEFAULT_VIDEO_TASK
+        print(read_dragged_video(task, args.mode, path=args.dragged_path))
+    elif args.clipboard:
         task = args.task or DEFAULT_TASK
         print(read_clipboard_image(task, args.mode))
     elif args.video:

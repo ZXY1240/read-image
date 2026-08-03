@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.9.0
+
+- 删除未接线的 `ConcurrencyGate` 死代码。
+- 缓存默认包含 task，并新增 `READ_IMAGE_CACHE_TTL_SEC` TTL，避免同图不同任务串结果。
+- 密钥扫描扩展为 `ark-`、`sk-` 等常见格式。
+- 新增 `read_dragged_image` / `read_dragged_video` 拖拽媒体识别工具。
+- 新增 `READ_DRAG_WINDOW_MIN`、`READ_DRAG_PATTERNS`、`READ_DRAG_DIRS` 配置。
+
 ## v0.8.0
 
 - 新增 `read_clipboard_image` MCP 工具，直接保存并识别 Windows 剪贴板图片。

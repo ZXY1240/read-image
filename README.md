@@ -1,4 +1,4 @@
-# read-image v0.8.0
+# read-image v0.9.0
 
 Codex 插件：让纯文本主模型读取本地图片、批量图片、视频和网页截图。默认使用豆包 Seed 2.1 Turbo，也支持 GLM、通义千问等 OpenAI 兼容视觉接口。
 
@@ -6,6 +6,7 @@ Codex 插件：让纯文本主模型读取本地图片、批量图片、视频�
 
 - `read_image(image, task, mode)`：读取单张本地图片、data URL 或 base64 图片数据。
 - `read_clipboard_image(task, mode)`：保存并读取 Windows 剪贴板图片，直接返回识别结果。
+- `read_dragged_image(task, mode, path)` / `read_dragged_video(task, mode, path)`：扫描最近拖入的图片/视频。
 - `read_images_batch(images, task, mode, max_workers)`：并行读取多张图片并按原顺序返回。
 - `read_video(video, task, mode)`：读取本地视频或视频 URL，本地视频优先 Files API，失败自动回退 Base64，支持转 MP4 和压缩。
 - `capture_page(url, actions, viewport, output_dir)`：用 Playwright 交互式截图。
@@ -50,13 +51,13 @@ uv run --project . --with playwright playwright install chromium
 Claude Code 原生插件已经内置。临时测试：
 
 ```powershell
-claude --plugin-dir C:\Users\admin\plugins\read-image
+claude --plugin-dir <插件根目录>
 ```
 
 持久安装到 Claude Code 的本地 skills 目录：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File C:\Users\admin\plugins\read-image\scripts\install_claude_plugin.ps1
+powershell -ExecutionPolicy Bypass -File <插件根目录>\scripts\install_claude_plugin.ps1
 ```
 
 安装后重启 Claude Code，先运行 `/mcp` 确认能看到 `read-image`、`capture-page`、`windows-capture`。Claude Code 中的 MCP 工具名可能带 `mcp__plugin_...` 前缀，以 `/mcp` 显示的实际名称调用。
@@ -70,10 +71,12 @@ powershell -ExecutionPolicy Bypass -File C:\Users\admin\plugins\read-image\scrip
 - data URL，例如 `data:image/png;base64,AAAA...`
 - 可解码为图片的纯 base64 字符串
 
+`read_image` 可以读取当前用户可访问的本地文件。请勿用它读取密码、密钥、认证材料等敏感文件，也不要让模型自行扫描与任务无关的目录。
+
 如果 Claude 桌面端粘贴图片没有可靠路径，不要猜测临时目录旧文件。优先使用 data URL/base64；拿不到数据时运行：
 
 ```powershell
-powershell -STA -ExecutionPolicy Bypass -File C:\Users\admin\plugins\read-image\scripts\save_clipboard_image.ps1
+powershell -STA -ExecutionPolicy Bypass -File <插件根目录>\scripts\save_clipboard_image.ps1
 ```
 
 脚本会返回稳定 PNG 路径，再交给 `read_image`。
@@ -88,6 +91,27 @@ await read_clipboard_image(
 ```
 
 `read_clipboard_image` 会保存剪贴板图片并自动识别，Claude 不需要扫描临时目录或按时间戳猜文件。
+
+## 拖拽媒体识别
+
+从其他应用拖拽图片或视频到聊天框时，如果会话没有可靠路径，调用：
+
+```python
+await read_dragged_image(
+    task="描述图片内容",
+    mode="standard",
+)
+```
+
+工具会扫描 `%TEMP%` 和 `READ_DRAG_DIRS` 指定目录，默认只看最近 30 分钟、匹配白名单前缀的文件。单候选自动识别；多候选会列出路径，调用方必须通过 `path` 参数确认后再识别。
+
+可通过以下环境变量调整：
+
+- `READ_DRAG_WINDOW_MIN`：时间窗口，默认 30 分钟。
+- `READ_DRAG_PATTERNS`：逗号分隔的白名单 glob，默认包含 `codex-clipboard-*`、`pasted_image*`、`current_paste*`、`pasted_*`、`claude-*`、`*.tmp`。
+- `READ_DRAG_DIRS`：分号分隔的附加扫描目录。
+
+缓存默认包含 task，同一张图不同问题不会串结果；`READ_IMAGE_CACHE_TTL_SEC` 默认 300 秒。
 
 极端长宽比图片会自动切片识别，避免被压成细条后产生幻觉。阈值由 `READ_IMAGE_EXTREME_ASPECT_RATIO_LIMIT` 控制，默认 `8`，设为 `0` 可关闭。
 

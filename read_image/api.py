@@ -5,7 +5,6 @@ from typing import Any
 
 import httpx
 
-from read_image.concurrency import ConcurrencyGate
 from read_image.config import api_key
 from read_image.http import (
     _extract_error_metadata,
@@ -82,7 +81,6 @@ class VisionClient:
         content_url: str,
         task: str,
         mode: str | None,
-        gate: ConcurrencyGate | None = None,
         video_file_id: str | None = None,
     ) -> str:
         return self._provider.call_with_retries(
@@ -90,7 +88,6 @@ class VisionClient:
             content_url,
             task,
             mode,
-            gate=gate,
             file_id=video_file_id,
         )
 
@@ -100,7 +97,6 @@ class VisionClient:
         task: str,
         mode: str | None,
         mime_type: str = "image/jpeg",
-        gate: ConcurrencyGate | None = None,
         timeout_sec: int | None = None,
     ) -> str:
         return self._provider.call_image(
@@ -108,7 +104,6 @@ class VisionClient:
             task,
             mode,
             mime_type=mime_type,
-            gate=gate,
             timeout_sec=timeout_sec,
         )
 
@@ -117,14 +112,12 @@ class VisionClient:
         video_url: str,
         task: str,
         mode: str | None,
-        gate: ConcurrencyGate | None = None,
         timeout_sec: int | None = None,
     ) -> str:
         return self._provider.call_video(
             video_url,
             task,
             mode,
-            gate=gate,
             timeout_sec=timeout_sec,
         )
 
@@ -133,14 +126,12 @@ class VisionClient:
         file_id: str,
         task: str,
         mode: str | None,
-        gate: ConcurrencyGate | None = None,
         timeout_sec: int | None = None,
     ) -> str:
         return self._provider.call_video(
             "",
             task,
             mode,
-            gate=gate,
             timeout_sec=timeout_sec,
             file_id=file_id,
         )
@@ -166,7 +157,6 @@ def call_image(
     task: str,
     mode: str | None,
     mime_type: str = "image/jpeg",
-    gate: ConcurrencyGate | None = None,
     timeout_sec: int | None = None,
 ) -> str:
     return default_client.call_image(
@@ -174,7 +164,6 @@ def call_image(
         task,
         mode,
         mime_type=mime_type,
-        gate=gate,
         timeout_sec=timeout_sec,
     )
 
@@ -183,18 +172,16 @@ def call_video(
     video_url: str,
     task: str,
     mode: str | None,
-    gate: ConcurrencyGate | None = None,
 ) -> str:
-    return default_client.call_video(video_url, task, mode, gate=gate)
+    return default_client.call_video(video_url, task, mode)
 
 
 def call_video_file_id(
     file_id: str,
     task: str,
     mode: str | None,
-    gate: ConcurrencyGate | None = None,
 ) -> str:
-    return default_client.call_video_file_id(file_id, task, mode, gate=gate)
+    return default_client.call_video_file_id(file_id, task, mode)
 
 
 def upload_video_file(path: str, timeout_sec: int | None = None) -> str:
@@ -214,7 +201,6 @@ def delete_video_file(
 
 
 __all__ = [
-    "ConcurrencyGate",
     "MAX_RATE_LIMIT_RETRIES",
     "MAX_TIMEOUT_RETRIES",
     "VisionClient",

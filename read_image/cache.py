@@ -2,20 +2,28 @@ from __future__ import annotations
 
 import hashlib
 import threading
+import time
 from collections import OrderedDict
 
 
 class ImageCache:
     """Small thread-safe LRU cache for already-processed image results."""
 
-    def __init__(self, max_entries: int = 256):
+    def __init__(self, max_entries: int = 256, ttl_sec: int = 300):
         self._max_entries = max(0, max_entries)
-        self._items: OrderedDict[str, str] = OrderedDict()
+        self._ttl_sec = max(0, ttl_sec)
+        self._items: OrderedDict[str, tuple[str, float]] = OrderedDict()
         self._lock = threading.Lock()
 
     def get(self, key: str) -> str | None:
         with self._lock:
-            value = self._items.get(key)
+            item = self._items.get(key)
+            if item is None:
+                return None
+            value, created = item
+            if self._ttl_sec > 0 and time.monotonic() - created > self._ttl_sec:
+                del self._items[key]
+                return None
             if value is not None:
                 self._items.move_to_end(key)
             return value
@@ -26,7 +34,7 @@ class ImageCache:
         with self._lock:
             if key in self._items:
                 self._items.move_to_end(key)
-            self._items[key] = value
+            self._items[key] = (value, time.monotonic())
             while len(self._items) > self._max_entries:
                 self._items.popitem(last=False)
 
@@ -45,7 +53,7 @@ def image_cache_key(
     model: str,
     provider: str,
     task: str = "",
-    use_task: bool = False,
+    use_task: bool = True,
 ) -> str:
     digest = hashlib.sha256(image_bytes).hexdigest()
     key = f"{digest}:{mode}:{model}:{provider}"

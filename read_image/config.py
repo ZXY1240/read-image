@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -26,9 +27,20 @@ DEFAULT_VIDEO_KEEP_AUDIO = False
 DEFAULT_VIDEO_WORKERS = 2
 DEFAULT_VIDEO_TIMEOUT_SEC = 300
 DEFAULT_CACHE_MAX_ENTRIES = 256
+DEFAULT_CACHE_USE_TASK = True
+DEFAULT_CACHE_TTL_SEC = 300
 DEFAULT_PROVIDER = "doubao"
 DEFAULT_OPENAI_THINKING_PARAM = "auto"
 DEFAULT_EXTREME_ASPECT_RATIO_LIMIT = 8
+DEFAULT_DRAG_WINDOW_MIN = 30
+DEFAULT_DRAG_PATTERNS = (
+    "codex-clipboard-*",
+    "pasted_image*",
+    "current_paste*",
+    "pasted_*",
+    "claude-*",
+    "*.tmp",
+)
 
 
 def _load_local_env_file() -> None:
@@ -126,12 +138,40 @@ def cache_max_entries() -> int:
 
 
 def cache_use_task() -> bool:
-    return os.environ.get("READ_IMAGE_CACHE_USE_TASK", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
+    raw = os.environ.get("READ_IMAGE_CACHE_USE_TASK", "").strip().lower()
+    if not raw:
+        return DEFAULT_CACHE_USE_TASK
+    return raw not in {
+        "0",
+        "false",
+        "no",
+        "off",
     }
+
+
+def cache_ttl_sec() -> int:
+    return max(0, env_int("READ_IMAGE_CACHE_TTL_SEC", DEFAULT_CACHE_TTL_SEC))
+
+
+def drag_window_minutes() -> int:
+    return max(1, env_int("READ_DRAG_WINDOW_MIN", DEFAULT_DRAG_WINDOW_MIN))
+
+
+def drag_patterns() -> list[str]:
+    raw = os.environ.get("READ_DRAG_PATTERNS", "").strip()
+    if not raw:
+        return list(DEFAULT_DRAG_PATTERNS)
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def drag_dirs() -> list[str]:
+    dirs = [tempfile.gettempdir()]
+    configured = os.environ.get("READ_DRAG_DIRS", "").strip()
+    for raw in configured.split(";"):
+        raw = raw.strip()
+        if raw:
+            dirs.append(raw)
+    return dirs
 
 
 def video_base64_max_bytes() -> int:
