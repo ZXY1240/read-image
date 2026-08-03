@@ -251,6 +251,11 @@ uv run python scripts/validate_plugin.py
 
 版本记录见 [CHANGELOG.md](CHANGELOG.md)。
 
+## 隐私与条款
+
+- [隐私政策](PRIVACY.md)
+- [使用条款](TERMS.md)
+
 ## License
 
 MIT License. Copyright (c) 2026 ZXY1240

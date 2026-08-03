@@ -78,6 +78,11 @@ uv run ruff check .
 uv run mypy read_image
 ```
 
+## Privacy and Terms
+
+- [Privacy Policy](PRIVACY.md)
+- [Terms of Use](TERMS.md)
+
 ## License
 
 MIT License. Copyright (c) 2026 ZXY1240

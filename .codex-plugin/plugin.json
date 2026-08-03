@@ -27,6 +27,9 @@
     "longDescription": "Adds read_image, read_images_batch, read_video, capture_page, and native Windows capture_windows/list_windows MCP tools.",
     "developerName": "ZXY1240",
     "composerIcon": "./assets/icon.svg",
+    "websiteURL": "https://github.com/ZXY1240/read-image",
+    "privacyPolicyURL": "https://github.com/ZXY1240/read-image/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/ZXY1240/read-image/blob/main/LICENSE",
     "category": "Productivity",
     "capabilities": [
       "Read"
