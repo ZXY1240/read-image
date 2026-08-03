@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import io
 import json
 from pathlib import Path
@@ -25,6 +26,7 @@ from read_image.media import (
     _video_mime,
     _video_too_large_error,
     prepare_image,
+    prepare_image_variants,
     video_base64_max_bytes,
     video_download_max_bytes,
     video_max_bytes,
@@ -178,6 +180,66 @@ def test_prepare_image_missing_file_raises(tmp_path: Path) -> None:
         pass
     else:
         raise AssertionError("expected ReadImageError")
+
+
+def test_prepare_image_accepts_data_url() -> None:
+    buffer = io.BytesIO()
+    Image.new("RGB", (20, 10), "red").save(buffer, format="PNG")
+    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+    data, mime = prepare_image(f"data:image/png;base64,{encoded}")
+    assert mime == "image/png"
+    assert Image.open(io.BytesIO(data)).size == (20, 10)
+
+
+def test_prepare_image_accepts_bare_base64() -> None:
+    buffer = io.BytesIO()
+    Image.new("RGB", (20, 10), "blue").save(buffer, format="PNG")
+    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+    data, mime = prepare_image(encoded)
+    assert mime == "image/png"
+    assert Image.open(io.BytesIO(data)).size == (20, 10)
+
+
+def test_prepare_image_reports_locked_file_as_permission_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "locked.png"
+    path.write_bytes(b"not-important")
+
+    def deny(*args: object, **kwargs: object) -> tuple[Image.Image, str, bool]:
+        raise PermissionError("file is locked")
+
+    monkeypatch.setattr("read_image.media._decode_image_bytes", deny)
+    with pytest.raises(ReadImageError) as exc_info:
+        prepare_image(str(path))
+    assert "被占用或无权限" in str(exc_info.value)
+
+
+def test_prepare_image_variants_slices_extreme_tall_image(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("READ_IMAGE_MAX_DIMENSION", "1024")
+    path = tmp_path / "tall.png"
+    Image.new("RGB", (48, 4032), "white").save(path)
+    variants = prepare_image_variants(str(path))
+    assert len(variants) > 1
+    for data, mime in variants:
+        assert mime == "image/png"
+        with Image.open(io.BytesIO(data)) as image:
+            assert image.width >= 128
+
+
+def test_prepare_image_variants_can_disable_extreme_slicing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("READ_IMAGE_EXTREME_ASPECT_RATIO_LIMIT", "0")
+    path = tmp_path / "tall.png"
+    Image.new("RGB", (48, 4032), "white").save(path)
+    variants = prepare_image_variants(str(path))
+    assert len(variants) == 1
 
 
 def test_video_max_bytes_uses_env(monkeypatch) -> None:

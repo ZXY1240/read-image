@@ -18,7 +18,7 @@ description: 读取本地图片和视频，并通过豆包、GLM 或通义千问
 
 Claude Code 中 MCP 工具名可能带 `mcp__plugin_...` 前缀。调用前先运行 `/mcp` 查看当前会话中的完整工具名，然后使用实际名称。
 
-单图优先调用 MCP 工具 `read_image(image, task, mode)`。
+单图优先调用 MCP 工具 `read_image(image, task, mode)`。`image` 支持本地路径、`data:` URL 和可解码的 base64 图片数据。
 
 多张图片优先调用 `read_images_batch(images, task, mode, max_workers)`，不要逐张串行调用。
 
@@ -87,6 +87,21 @@ uv run --project <插件根目录> read-image-windows-capture --capture --mode w
 
 图片默认最大边 2048，`READ_IMAGE_FORMAT=auto` 会保留 PNG 等无损格式，截图文字不要手动转成 JPEG。
 
+## 粘贴图片没有可靠路径时
+
+如果会话中的图片没有可直接调用的本地路径，不要猜测临时目录里的 `.tmp` 或旧文件。
+
+按以下顺序处理：
+1. 如果图片数据能作为 `data:` URL 或 base64 传给 `read_image`，直接传数据。
+2. 如果拿不到数据，先运行：
+   ```powershell
+   powershell -STA -ExecutionPolicy Bypass -File <插件根目录>/scripts/save_clipboard_image.ps1
+   ```
+   脚本会返回稳定 PNG 路径，再传给 `read_image`。
+3. 如果剪贴板也没有图片，请用户把图片保存成文件后再调用 `read_image`。不要自行编造图片内容。
+
+`read_image` 会自动把极端长宽比图片切片识别。可通过 `READ_IMAGE_EXTREME_ASPECT_RATIO_LIMIT` 调整阈值，设为 `0` 可关闭自动切片。
+
 ## Provider
 
 默认使用豆包。通过 `READ_IMAGE_PROVIDER=openai_compatible` 配合 `READ_IMAGE_BASE_URL`、`READ_IMAGE_MODEL` 可切换 GLM、通义千问等 OpenAI 兼容模型。
@@ -150,6 +165,7 @@ READ_IMAGE_API_KEY=你的豆包API Key
 - `READ_IMAGE_MAX_DIMENSION`
 - `READ_IMAGE_FORMAT`
 - `READ_IMAGE_JPEG_QUALITY`
+- `READ_IMAGE_EXTREME_ASPECT_RATIO_LIMIT`
 - `READ_IMAGE_TIMEOUT_SEC`
 - `READ_IMAGE_BATCH_WORKERS`
 - `READ_IMAGE_BATCH_TIMEOUT_SEC`

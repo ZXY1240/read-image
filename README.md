@@ -1,10 +1,10 @@
-# read-image v0.6.0
+# read-image v0.7.0
 
 Codex 插件：让纯文本主模型读取本地图片、批量图片、视频和网页截图。默认使用豆包 Seed 2.1 Turbo，也支持 GLM、通义千问等 OpenAI 兼容视觉接口。
 
 ## 功能
 
-- `read_image(image, task, mode)`：读取单张本地图片。
+- `read_image(image, task, mode)`：读取单张本地图片、data URL 或 base64 图片数据。
 - `read_images_batch(images, task, mode, max_workers)`：并行读取多张图片并按原顺序返回。
 - `read_video(video, task, mode)`：读取本地视频或视频 URL，本地视频优先 Files API，失败自动回退 Base64，支持转 MP4 和压缩。
 - `capture_page(url, actions, viewport, output_dir)`：用 Playwright 交互式截图。
@@ -61,6 +61,23 @@ powershell -ExecutionPolicy Bypass -File C:\Users\admin\plugins\read-image\scrip
 安装后重启 Claude Code，先运行 `/mcp` 确认能看到 `read-image`、`capture-page`、`windows-capture`。Claude Code 中的 MCP 工具名可能带 `mcp__plugin_...` 前缀，以 `/mcp` 显示的实际名称调用。
 
 首次使用如果看到“Pending approval”，在 Claude Code 中批准对应 MCP 服务即可。需要 API Key 时，在插件根目录创建 `.env`，或设置 `READ_IMAGE_API_KEY` 等系统环境变量。
+
+## 图片输入格式
+
+`read_image` 的 `image` 参数支持：
+- 本地图片路径，例如 `C:/path/to/image.png`
+- data URL，例如 `data:image/png;base64,AAAA...`
+- 可解码为图片的纯 base64 字符串
+
+如果 Claude 桌面端粘贴图片没有可靠路径，不要猜测临时目录旧文件。优先使用 data URL/base64；拿不到数据时运行：
+
+```powershell
+powershell -STA -ExecutionPolicy Bypass -File C:\Users\admin\plugins\read-image\scripts\save_clipboard_image.ps1
+```
+
+脚本会返回稳定 PNG 路径，再交给 `read_image`。
+
+极端长宽比图片会自动切片识别，避免被压成细条后产生幻觉。阈值由 `READ_IMAGE_EXTREME_ASPECT_RATIO_LIMIT` 控制，默认 `8`，设为 `0` 可关闭。
 
 ## 配置
 

@@ -31,12 +31,12 @@ def test_batch_timeout_helper_uses_env_override(
 def test_batch_returns_partial_failures_instead_of_dropping(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def fake_prepare(path: str) -> tuple[bytes, str]:
+    def fake_prepare(path: str) -> list[tuple[bytes, str]]:
         if "missing" in path:
             raise ReadImageError("missing file")
-        return b"image", "image/png"
+        return [(b"image", "image/png")]
 
-    monkeypatch.setattr(read_image_server, "prepare_image", fake_prepare)
+    monkeypatch.setattr(read_image_server, "prepare_image_variants", fake_prepare)
     monkeypatch.setattr(
         read_image_server,
         "_run_image_with_cache",
@@ -59,8 +59,8 @@ def test_batch_times_out_individual_image(
     release = threading.Event()
     monkeypatch.setattr(
         read_image_server,
-        "prepare_image",
-        lambda path: (b"image", "image/png"),
+        "prepare_image_variants",
+        lambda path: [(b"image", "image/png")],
     )
 
     def slow_call(*args: object, **kwargs: object) -> str:
@@ -114,8 +114,8 @@ def test_batch_429_retries_locally_without_failing_batch(
     )
     monkeypatch.setattr(
         read_image_server,
-        "prepare_image",
-        lambda path: (b"image", "image/png"),
+        "prepare_image_variants",
+        lambda path: [(b"image", "image/png")],
     )
 
     result = read_image_server.read_images_batch(
@@ -133,8 +133,8 @@ def test_batch_does_not_misreport_slow_but_successful_result(
 ) -> None:
     monkeypatch.setattr(
         read_image_server,
-        "prepare_image",
-        lambda path: (b"image", "image/png"),
+        "prepare_image_variants",
+        lambda path: [(b"image", "image/png")],
     )
 
     def slow_call(*args: object, **kwargs: object) -> str:
@@ -150,3 +150,22 @@ def test_batch_does_not_misreport_slow_but_successful_result(
         1,
     )
     assert "late-but-ok" in result
+
+
+def test_read_image_merges_extreme_slice_results(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        read_image_server,
+        "prepare_image_variants",
+        lambda raw: [(b"one", "image/png"), (b"two", "image/png")],
+    )
+    monkeypatch.setattr(
+        read_image_server,
+        "_run_image_with_cache",
+        lambda *args, **kwargs: "segment-result",
+    )
+    result = read_image_server.read_image("data:image/png;base64,AAAA", "task", "quick")
+    assert "第 1/2 段" in result
+    assert "第 2/2 段" in result
+    assert result.count("segment-result") == 2

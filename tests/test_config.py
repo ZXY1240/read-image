@@ -11,6 +11,7 @@ from read_image.config import (
     DEFAULT_VIDEO_WORKERS,
     api_key,
     cache_use_task,
+    extreme_aspect_ratio_limit,
     openai_thinking_param,
     provider_name,
     video_base64_max_bytes,
@@ -154,3 +155,14 @@ def test_openai_thinking_param_default_and_override(
     assert openai_thinking_param() == "auto"
     monkeypatch.setenv("READ_IMAGE_OPENAI_THINKING_PARAM", "enable_thinking")
     assert openai_thinking_param() == "enable_thinking"
+
+
+def test_extreme_aspect_ratio_limit_default_and_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("READ_IMAGE_EXTREME_ASPECT_RATIO_LIMIT", raising=False)
+    assert extreme_aspect_ratio_limit() == 8
+    monkeypatch.setenv("READ_IMAGE_EXTREME_ASPECT_RATIO_LIMIT", "12")
+    assert extreme_aspect_ratio_limit() == 12
+    monkeypatch.setenv("READ_IMAGE_EXTREME_ASPECT_RATIO_LIMIT", "0")
+    assert extreme_aspect_ratio_limit() == float("inf")

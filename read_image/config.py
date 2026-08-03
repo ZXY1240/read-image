@@ -28,6 +28,7 @@ DEFAULT_VIDEO_TIMEOUT_SEC = 300
 DEFAULT_CACHE_MAX_ENTRIES = 256
 DEFAULT_PROVIDER = "doubao"
 DEFAULT_OPENAI_THINKING_PARAM = "auto"
+DEFAULT_EXTREME_ASPECT_RATIO_LIMIT = 8
 
 
 def _load_local_env_file() -> None:
@@ -97,6 +98,20 @@ def openai_thinking_param() -> str:
     if value in {"auto", "thinking", "enable_thinking", "none"}:
         return value
     return DEFAULT_OPENAI_THINKING_PARAM
+
+
+def extreme_aspect_ratio_limit() -> float:
+    raw = os.environ.get("READ_IMAGE_EXTREME_ASPECT_RATIO_LIMIT", "").strip()
+    if not raw:
+        return float(DEFAULT_EXTREME_ASPECT_RATIO_LIMIT)
+    lowered = raw.lower()
+    if lowered in {"0", "off", "false", "no", "none"}:
+        return float("inf")
+    try:
+        value = float(raw)
+    except ValueError:
+        return float(DEFAULT_EXTREME_ASPECT_RATIO_LIMIT)
+    return value if value > 0 else float("inf")
 
 
 def image_format() -> str:

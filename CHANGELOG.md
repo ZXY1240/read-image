@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.7.0
+
+- `read_image` 支持本地路径、`data:` URL 和 base64 图片数据。
+- 修复图片文件被占用时误报“无法解码”，改为明确的“文件被占用或无权限”提示。
+- 极端长宽比图片自动切片识别，避免被缩成细条后产生幻觉。
+- 新增 Claude 桌面剪贴板图片保存脚本 `scripts/save_clipboard_image.ps1`。
+- SKILL/CLAUDE 文档禁止猜测临时目录旧文件，优先使用 data URL/base64 或剪贴板稳定路径。
+
 ## v0.6.0
 
 - 新增 Claude Code 原生插件包装：`.claude-plugin/plugin.json`、`.claude-mcp.json`、`CLAUDE.md`。

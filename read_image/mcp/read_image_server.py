@@ -26,7 +26,7 @@ from read_image.config import (
 from read_image.errors import ReadImageError, tr
 from read_image.logging import configure_logging
 from read_image.mcp.common import run_cli
-from read_image.media import analyze_video, prepare_image
+from read_image.media import analyze_video, prepare_image_variants
 from read_image.profiles import profile_for_mode
 from read_image.workers import run_video_task
 
@@ -34,6 +34,14 @@ mcp = FastMCP("read-image")
 logger = configure_logging("read-image-vision")
 _image_cache = ImageCache(cache_max_entries())
 BATCH_TIMEOUT_BUFFER_SEC = 30
+
+
+def _format_slice_results(results: list[str]) -> str:
+    if len(results) == 1:
+        return results[0]
+    return "\n\n".join(
+        f"## 第 {index + 1}/{len(results)} 段\n\n{result}" for index, result in enumerate(results)
+    )
 
 
 def _run_image_with_cache(
@@ -72,7 +80,10 @@ def _run_image_with_cache(
 
 @mcp.tool()
 def read_image(
-    image: Annotated[str, Field(description="本地图片文件的绝对路径。")],
+    image: Annotated[
+        str,
+        Field(description="本地图片路径、data URL 或 base64 图片数据。"),
+    ],
     task: Annotated[
         str,
         Field(description="本次要从图片中提取的具体内容，未传时默认详细描述图片内容。"),
@@ -87,11 +98,15 @@ def read_image(
         ),
     ] = DEFAULT_MODE,
 ) -> str:
-    """读取本地图片，并按 task 和 mode 调用豆包视觉模型提取结果。"""
+    """读取本地图片、data URL 或 base64 图片，并按 task 和 mode 调用视觉模型。"""
     effective_task = task.strip() if task and task.strip() else DEFAULT_TASK
     profile_for_mode(mode)
-    image_bytes, mime_type = prepare_image(image)
-    return _run_image_with_cache(image_bytes, mime_type, effective_task, mode)
+    variants = prepare_image_variants(image)
+    results = [
+        _run_image_with_cache(image_bytes, mime_type, effective_task, mode)
+        for image_bytes, mime_type in variants
+    ]
+    return _format_slice_results(results)
 
 
 @mcp.tool()
@@ -156,7 +171,11 @@ def _format_batch_results(
 def read_images_batch(
     images: Annotated[
         list[str],
-        Field(description="本地图片绝对路径列表，至少 1 张；结果按传入顺序汇总。"),
+        Field(
+            description=(
+                "本地图片路径、data URL 或 base64 图片数据列表，至少 1 项；结果按传入顺序汇总。"
+            )
+        ),
     ],
     task: Annotated[
         str,
@@ -213,16 +232,22 @@ def read_images_batch(
         if remaining <= 0:
             return timeout_result(index, path)
         try:
-            image_bytes, mime_type = prepare_image(path)
-            if stop_event.is_set():
-                return timeout_result(index, path)
-            content = _run_image_with_cache(
-                image_bytes,
-                mime_type,
-                effective_task,
-                mode,
-                timeout_sec=max(1, int(remaining)),
-            )
+            variants = prepare_image_variants(path)
+            results: list[str] = []
+            per_variant_timeout = max(1, int(remaining / max(1, len(variants))))
+            for image_bytes, mime_type in variants:
+                if stop_event.is_set():
+                    return timeout_result(index, path)
+                results.append(
+                    _run_image_with_cache(
+                        image_bytes,
+                        mime_type,
+                        effective_task,
+                        mode,
+                        timeout_sec=per_variant_timeout,
+                    )
+                )
+            content = _format_slice_results(results)
             return index, path, content, None
         except ReadImageError as exc:
             return index, path, None, str(exc)
@@ -287,7 +312,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--image",
         action="append",
-        help="Absolute path to a local image; repeat for batch mode.",
+        help="Local image path, data URL, or base64 image data; repeat for batch mode.",
     )
     parser.add_argument(
         "--video",

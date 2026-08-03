@@ -82,6 +82,7 @@ def main() -> int:
                 "READ_IMAGE_OPENAI_THINKING_PARAM",
                 "READ_IMAGE_PROFILES_JSON",
                 "READ_IMAGE_CACHE_USE_TASK",
+                "READ_IMAGE_EXTREME_ASPECT_RATIO_LIMIT",
                 "READ_IMAGE_ALLOWED_OUTPUT_DIRS",
                 "READ_IMAGE_ALLOW_PRIVATE_URLS",
                 "READ_IMAGE_VIDEO_WORKERS",
@@ -152,6 +153,8 @@ def main() -> int:
 
     if not (root / "scripts" / "install_claude_plugin.ps1").is_file():
         errors.append("Missing scripts/install_claude_plugin.ps1")
+    if not (root / "scripts" / "save_clipboard_image.ps1").is_file():
+        errors.append("Missing scripts/save_clipboard_image.ps1")
 
     versions: list[str] = []
     init_path = root / "read_image" / "__init__.py"

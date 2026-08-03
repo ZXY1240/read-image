@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import io
 import mimetypes
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -16,6 +17,7 @@ from read_image.config import (
     DEFAULT_MAX_DIMENSION,
     DEFAULT_VIDEO_MAX_MB,
     env_int,
+    extreme_aspect_ratio_limit,
     image_format,
     video_base64_max_bytes,
     video_download_max_bytes,
@@ -47,6 +49,9 @@ VIDEO_SCALE_720 = 720
 VIDEO_SCALE_480 = 480
 VIDEO_TRANSCODE_TIMEOUT_SEC = 600
 VIDEO_DOWNLOAD_TIMEOUT_SEC = 120
+EXTREME_SLICE_MIN_DIMENSION = 256
+EXTREME_SLICE_OVERLAP = 16
+_BASE64_RE = re.compile(r"^[A-Za-z0-9+/]+={0,2}$")
 
 
 def _active_provider():
@@ -137,20 +142,21 @@ def _resize_image(image: Image.Image, max_dimension: int) -> Image.Image:
     return image.resize(new_size, Image.Resampling.LANCZOS)
 
 
-def prepare_image(raw_path: str) -> tuple[bytes, str]:
-    raw_path = raw_path.strip()
-    if not raw_path:
-        raise ReadImageError(tr("image 参数为空。", "image argument is empty."))
+def _resize_slice(image: Image.Image, max_dimension: int) -> Image.Image:
+    scale = max_dimension / max(image.size)
+    new_size = (
+        max(1, round(image.size[0] * scale)),
+        max(1, round(image.size[1] * scale)),
+    )
+    return image.resize(new_size, Image.Resampling.LANCZOS)
 
-    path = Path(raw_path).expanduser()
-    if not path.is_absolute():
-        path = Path.cwd() / path
-    path = path.resolve()
-    if not path.is_file():
-        raise ReadImageError(tr(f"找不到图片文件：{path}", f"Image file not found: {path}"))
 
+def _decode_image_bytes(
+    data: bytes,
+    label: str,
+) -> tuple[Image.Image, str, bool]:
     try:
-        with Image.open(path) as opened:
+        with Image.open(io.BytesIO(data)) as opened:
             opened.load()
             original_format = opened.format or "JPEG"
             animated = getattr(opened, "n_frames", 1) > 1
@@ -158,11 +164,148 @@ def prepare_image(raw_path: str) -> tuple[bytes, str]:
     except Exception as exc:
         raise ReadImageError(
             tr(
-                f"图片无法解码，请确认文件是支持的图片格式：{path} ({exc})",
-                f"Image could not be decoded; confirm it is a supported format: {path} ({exc})",
+                f"图片无法解码，请确认图片数据有效：{label} ({exc})",
+                f"Image could not be decoded; confirm the image data is valid: {label} ({exc})",
+            )
+        ) from exc
+    return image, original_format, animated
+
+
+def _data_url_bytes(raw: str) -> bytes | None:
+    if not raw.lower().startswith("data:"):
+        return None
+    try:
+        header, payload = raw.split(",", 1)
+    except ValueError as exc:
+        raise ReadImageError(
+            tr(
+                "data URL 格式无效。",
+                "Invalid data URL format.",
+            )
+        ) from exc
+    if "base64" not in header.lower():
+        raise ReadImageError(
+            tr(
+                "data URL 必须是 base64 编码。",
+                "Data URL must use base64 encoding.",
+            )
+        )
+    try:
+        return base64.b64decode(payload, validate=True)
+    except (ValueError, TypeError) as exc:
+        raise ReadImageError(
+            tr(
+                "data URL 的 base64 数据无效。",
+                "Data URL contains invalid base64 data.",
             )
         ) from exc
 
+
+def _bare_base64_bytes(raw: str) -> bytes | None:
+    if len(raw) < 64 or not _BASE64_RE.match(raw):
+        return None
+    try:
+        data = base64.b64decode(raw, validate=True)
+    except (ValueError, TypeError):
+        return None
+    try:
+        with Image.open(io.BytesIO(data)) as opened:
+            opened.load()
+    except Exception:
+        return None
+    return data
+
+
+def _read_image_source(raw: str) -> tuple[Image.Image, str, bool]:
+    raw = raw.strip()
+    if not raw:
+        raise ReadImageError(tr("image 参数为空。", "image argument is empty."))
+
+    data_url = _data_url_bytes(raw)
+    if data_url is not None:
+        return _decode_image_bytes(data_url, "data URL")
+
+    bare_base64 = _bare_base64_bytes(raw)
+    if bare_base64 is not None:
+        return _decode_image_bytes(bare_base64, "base64")
+
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    path = path.resolve()
+    if not path.is_file():
+        raise ReadImageError(tr(f"找不到图片文件：{path}", f"Image file not found: {path}"))
+    try:
+        data = path.read_bytes()
+    except PermissionError as exc:
+        raise ReadImageError(
+            tr(
+                f"图片文件被占用或无权限访问，请等待写入完成、复制到稳定路径或重试：{path}",
+                f"Image file is locked or not accessible. Wait for the write to finish, "
+                f"copy it to a stable path, or retry: {path}",
+            )
+        ) from exc
+    except OSError as exc:
+        raise ReadImageError(
+            tr(
+                f"图片文件读取失败：{path} ({exc})",
+                f"Image file could not be read: {path} ({exc})",
+            )
+        ) from exc
+    try:
+        return _decode_image_bytes(data, str(path))
+    except PermissionError as exc:
+        raise ReadImageError(
+            tr(
+                f"图片文件被占用或无权限访问，请等待写入完成、复制到稳定路径或重试：{path}",
+                f"Image file is locked or not accessible. Wait for the write to finish, "
+                f"copy it to a stable path, or retry: {path}",
+            )
+        ) from exc
+
+
+def _slice_extreme_image(image: Image.Image) -> list[Image.Image]:
+    limit = extreme_aspect_ratio_limit()
+    width, height = image.size
+    long_side = max(width, height)
+    short_side = min(width, height)
+    if short_side <= 0 or long_side / short_side <= limit:
+        return [image]
+
+    max_dimension = max(
+        1,
+        env_int("READ_IMAGE_MAX_DIMENSION", DEFAULT_MAX_DIMENSION),
+    )
+    segment_len = max(
+        1,
+        round(max_dimension * short_side / EXTREME_SLICE_MIN_DIMENSION),
+    )
+    overlap = min(EXTREME_SLICE_OVERLAP, max(1, segment_len // 10))
+    step = max(1, segment_len - overlap)
+
+    slices: list[Image.Image] = []
+    if width > height:
+        starts = list(range(0, width, step))
+        if starts[-1] + segment_len < width:
+            starts.append(width - segment_len)
+        for x in starts:
+            segment = image.crop((x, 0, min(x + segment_len, width), height))
+            slices.append(_resize_slice(segment, max_dimension))
+    else:
+        starts = list(range(0, height, step))
+        if starts[-1] + segment_len < height:
+            starts.append(height - segment_len)
+        for y in starts:
+            segment = image.crop((0, y, width, min(y + segment_len, height)))
+            slices.append(_resize_slice(segment, max_dimension))
+    return slices
+
+
+def _prepare_image_from_pil(
+    image: Image.Image,
+    original_format: str,
+    animated: bool,
+) -> tuple[bytes, str]:
     max_dimension = max(
         1,
         env_int("READ_IMAGE_MAX_DIMENSION", DEFAULT_MAX_DIMENSION),
@@ -185,6 +328,18 @@ def prepare_image(raw_path: str) -> tuple[bytes, str]:
 
     image = _to_rgb(image)
     return _save_image(image, "JPEG", quality), "image/jpeg"
+
+
+def prepare_image_variants(raw: str) -> list[tuple[bytes, str]]:
+    image, original_format, animated = _read_image_source(raw)
+    return [
+        _prepare_image_from_pil(segment, original_format, animated)
+        for segment in _slice_extreme_image(image)
+    ]
+
+
+def prepare_image(raw: str) -> tuple[bytes, str]:
+    return prepare_image_variants(raw)[0]
 
 
 def _ffmpeg_executable() -> str:
