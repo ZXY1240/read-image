@@ -5,6 +5,7 @@
 ## 自动调用
 
 - 单张图片调用 `read_image(image, task, mode)`，支持本地路径、`data:` URL 和 base64。
+- 剪贴板图片且没有可靠路径时，直接调用 `read_clipboard_image(task, mode)`。
 - 多张图片调用 `read_images_batch(images, task, mode, max_workers)`。
 - 本地视频或视频 URL 调用 `read_video(video, task, mode)`。
 - 网页动态内容先调用 `capture_page(...)`，再把截图路径交给批量识别。
@@ -12,4 +13,4 @@
 
 Claude Code 中 MCP 工具名可能带 `mcp__plugin_...` 前缀。使用前先运行 `/mcp` 查看当前会话中的完整工具名，再调用实际名称。
 
-如果粘贴图片没有可靠本地路径，不要猜测临时目录里的 `.tmp` 或旧文件。优先把图片数据作为 `data:` URL 或 base64 传给 `read_image`；拿不到数据时运行 `scripts/save_clipboard_image.ps1` 保存剪贴板图片为稳定 PNG，再传给 `read_image`。剪贴板也没有图片时，请用户先把图片保存成文件。
+如果粘贴图片没有可靠本地路径，优先调用 `read_clipboard_image(task, mode)`。禁止扫描 `Temp` 目录、禁止按修改时间猜测图片文件、禁止使用“很可能/可能是你刚粘贴的图片”这类推测表述。如果工具返回“剪贴板中没有图片”，请用户先把图片保存成文件后再调用 `read_image`。

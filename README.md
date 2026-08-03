@@ -1,10 +1,11 @@
-# read-image v0.7.0
+# read-image v0.8.0
 
 Codex 插件：让纯文本主模型读取本地图片、批量图片、视频和网页截图。默认使用豆包 Seed 2.1 Turbo，也支持 GLM、通义千问等 OpenAI 兼容视觉接口。
 
 ## 功能
 
 - `read_image(image, task, mode)`：读取单张本地图片、data URL 或 base64 图片数据。
+- `read_clipboard_image(task, mode)`：保存并读取 Windows 剪贴板图片，直接返回识别结果。
 - `read_images_batch(images, task, mode, max_workers)`：并行读取多张图片并按原顺序返回。
 - `read_video(video, task, mode)`：读取本地视频或视频 URL，本地视频优先 Files API，失败自动回退 Base64，支持转 MP4 和压缩。
 - `capture_page(url, actions, viewport, output_dir)`：用 Playwright 交互式截图。
@@ -76,6 +77,17 @@ powershell -STA -ExecutionPolicy Bypass -File C:\Users\admin\plugins\read-image\
 ```
 
 脚本会返回稳定 PNG 路径，再交给 `read_image`。
+
+更好的方式是直接调用 MCP 工具：
+
+```python
+await read_clipboard_image(
+    task="描述剪贴板图片内容",
+    mode="standard",
+)
+```
+
+`read_clipboard_image` 会保存剪贴板图片并自动识别，Claude 不需要扫描临时目录或按时间戳猜文件。
 
 极端长宽比图片会自动切片识别，避免被压成细条后产生幻觉。阈值由 `READ_IMAGE_EXTREME_ASPECT_RATIO_LIMIT` 控制，默认 `8`，设为 `0` 可关闭。
 

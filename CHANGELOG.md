@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.8.0
+
+- 新增 `read_clipboard_image` MCP 工具，直接保存并识别 Windows 剪贴板图片。
+- `read-image-vision` 增加 `--clipboard` 命令行入口。
+- SKILL/CLAUDE 文档明确禁止扫描临时目录、禁止按时间戳猜测图片、禁止使用“很可能”类推测。
+
 ## v0.7.0
 
 - `read_image` 支持本地路径、`data:` URL 和 base64 图片数据。

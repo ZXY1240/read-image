@@ -110,6 +110,14 @@ def main() -> int:
         errors.append("Missing pyproject.toml")
     if not (root / "read_image" / "mcp" / "read_image_server.py").is_file():
         errors.append("Missing read_image.mcp.read_image_server")
+    else:
+        read_image_server_source = (root / "read_image" / "mcp" / "read_image_server.py").read_text(
+            encoding="utf-8"
+        )
+        if "def read_clipboard_image" not in read_image_server_source:
+            errors.append("read_image_server.py must define read_clipboard_image")
+        if '"--clipboard"' not in read_image_server_source:
+            errors.append("read_image_server.py must expose --clipboard CLI flag")
     if not (root / "read_image" / "providers" / "factory.py").is_file():
         errors.append("Missing read_image.providers.factory")
     if not (root / "skills" / "read-image" / "SKILL.md").is_file():

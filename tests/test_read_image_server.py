@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import subprocess
 import threading
 import time
+from pathlib import Path
 
 import httpx
 import pytest
@@ -169,3 +171,55 @@ def test_read_image_merges_extreme_slice_results(
     assert "第 1/2 段" in result
     assert "第 2/2 段" in result
     assert result.count("segment-result") == 2
+
+
+def test_read_clipboard_image_returns_vision_result(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clipboard_png = tmp_path / "clipboard.png"
+    clipboard_png.write_bytes(b"fake-png")
+    monkeypatch.setattr(
+        read_image_server.subprocess,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(
+            args[0],
+            0,
+            stdout=str(clipboard_png),
+            stderr="",
+        ),
+    )
+    monkeypatch.setattr(
+        read_image_server,
+        "read_image",
+        lambda image, task, mode: f"result:{image}:{task}:{mode}",
+    )
+    result = read_image_server.read_clipboard_image("task", "quick")
+    assert result == f"result:{clipboard_png}:task:quick"
+
+
+def test_read_clipboard_image_reports_missing_image(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        read_image_server.subprocess,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(
+            args[0],
+            1,
+            stdout="",
+            stderr="Clipboard does not contain an image.",
+        ),
+    )
+    with pytest.raises(ReadImageError) as exc_info:
+        read_image_server.read_clipboard_image("task", "quick")
+    assert "剪贴板中没有图片" in str(exc_info.value)
+
+
+def test_read_clipboard_image_reports_non_windows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("read_image.mcp.read_image_server.os.name", "posix")
+    with pytest.raises(ReadImageError) as exc_info:
+        read_image_server.read_clipboard_image("task", "quick")
+    assert "仅支持 Windows" in str(exc_info.value)

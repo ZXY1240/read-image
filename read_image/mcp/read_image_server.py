@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import os
+import subprocess
 import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, wait
+from pathlib import Path
 from typing import Annotated
 
 from mcp.server.fastmcp import FastMCP
@@ -34,6 +37,7 @@ mcp = FastMCP("read-image")
 logger = configure_logging("read-image-vision")
 _image_cache = ImageCache(cache_max_entries())
 BATCH_TIMEOUT_BUFFER_SEC = 30
+CLIPBOARD_SAVE_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "save_clipboard_image.ps1"
 
 
 def _format_slice_results(results: list[str]) -> str:
@@ -107,6 +111,107 @@ def read_image(
         for image_bytes, mime_type in variants
     ]
     return _format_slice_results(results)
+
+
+@mcp.tool()
+def read_clipboard_image(
+    task: Annotated[
+        str,
+        Field(description="本次要从剪贴板图片中提取或分析的具体内容。"),
+    ] = DEFAULT_TASK,
+    mode: Annotated[
+        str,
+        Field(
+            description=(
+                "识别档位：quick/standard/full/quick_analysis/balanced_analysis/"
+                "deep_analysis，默认 standard。"
+            )
+        ),
+    ] = DEFAULT_MODE,
+) -> str:
+    """保存并读取 Windows 剪贴板图片，直接返回视觉模型结果。"""
+    effective_task = task.strip() if task and task.strip() else DEFAULT_TASK
+    profile_for_mode(mode)
+    if os.name != "nt":
+        raise ReadImageError(
+            tr(
+                "read_clipboard_image 仅支持 Windows。",
+                "read_clipboard_image is only supported on Windows.",
+            )
+        )
+    if not CLIPBOARD_SAVE_SCRIPT.is_file():
+        raise ReadImageError(
+            tr(
+                f"找不到剪贴板保存脚本：{CLIPBOARD_SAVE_SCRIPT}",
+                f"Clipboard save script not found: {CLIPBOARD_SAVE_SCRIPT}",
+            )
+        )
+    try:
+        result = subprocess.run(
+            [
+                "powershell",
+                "-NoProfile",
+                "-STA",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(CLIPBOARD_SAVE_SCRIPT),
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ReadImageError(
+            tr(
+                "剪贴板读取超时。",
+                "Clipboard image read timed out.",
+            )
+        ) from exc
+    except OSError as exc:
+        raise ReadImageError(
+            tr(
+                f"无法启动剪贴板保存脚本：{exc}",
+                f"Could not start clipboard save script: {exc}",
+            )
+        ) from exc
+
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "").strip()
+        if "clipboard does not contain an image" in detail.lower():
+            raise ReadImageError(
+                tr(
+                    "剪贴板中没有图片。请先把图片保存成文件后再调用 read_image。",
+                    "Clipboard does not contain an image. Save the image to a file "
+                    "and call read_image instead.",
+                )
+            )
+        raise ReadImageError(
+            tr(
+                f"剪贴板图片保存失败：{detail}",
+                f"Clipboard image save failed: {detail}",
+            )
+        )
+
+    lines = [line.strip() for line in (result.stdout or "").splitlines() if line.strip()]
+    if not lines:
+        raise ReadImageError(
+            tr(
+                "剪贴板图片保存失败，未返回文件路径。",
+                "Clipboard image save failed without returning a path.",
+            )
+        )
+    saved_path = Path(lines[-1])
+    if not saved_path.is_file():
+        raise ReadImageError(
+            tr(
+                f"剪贴板图片保存失败，文件不存在：{saved_path}",
+                f"Clipboard image save failed; file not found: {saved_path}",
+            )
+        )
+    return read_image(str(saved_path), effective_task, mode)
 
 
 @mcp.tool()
@@ -331,11 +436,19 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_BATCH_WORKERS,
         help="Batch worker count (default 4, max 8).",
     )
+    parser.add_argument(
+        "--clipboard",
+        action="store_true",
+        help="Read the Windows clipboard image and return vision results.",
+    )
     return parser
 
 
 def _run_cli_handler(args: argparse.Namespace) -> int:
-    if args.video:
+    if args.clipboard:
+        task = args.task or DEFAULT_TASK
+        print(read_clipboard_image(task, args.mode))
+    elif args.video:
         task = args.task or DEFAULT_VIDEO_TASK
         print(read_video(args.video, task, args.mode))
     elif not args.image:

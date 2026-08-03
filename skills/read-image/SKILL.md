@@ -20,6 +20,8 @@ Claude Code 中 MCP 工具名可能带 `mcp__plugin_...` 前缀。调用前先�
 
 单图优先调用 MCP 工具 `read_image(image, task, mode)`。`image` 支持本地路径、`data:` URL 和可解码的 base64 图片数据。
 
+如果图片来自 Windows 剪贴板且没有可靠路径，直接调用 `read_clipboard_image(task, mode)`，不要扫描临时目录。
+
 多张图片优先调用 `read_images_batch(images, task, mode, max_workers)`，不要逐张串行调用。
 
 本地视频或视频 URL 调用 `read_video(video, task, mode)`。
@@ -92,13 +94,15 @@ uv run --project <插件根目录> read-image-windows-capture --capture --mode w
 如果会话中的图片没有可直接调用的本地路径，不要猜测临时目录里的 `.tmp` 或旧文件。
 
 按以下顺序处理：
-1. 如果图片数据能作为 `data:` URL 或 base64 传给 `read_image`，直接传数据。
-2. 如果拿不到数据，先运行：
+1. 优先调用 MCP 工具 `read_clipboard_image(task, mode)`。
+2. 如果当前环境没有该工具，再运行：
    ```powershell
    powershell -STA -ExecutionPolicy Bypass -File <插件根目录>/scripts/save_clipboard_image.ps1
    ```
    脚本会返回稳定 PNG 路径，再传给 `read_image`。
 3. 如果剪贴板也没有图片，请用户把图片保存成文件后再调用 `read_image`。不要自行编造图片内容。
+
+禁止扫描 `Temp` 目录、禁止按修改时间选择图片文件、禁止在回复中使用“很可能/可能是你刚粘贴的图片”这类推测表述。
 
 `read_image` 会自动把极端长宽比图片切片识别。可通过 `READ_IMAGE_EXTREME_ASPECT_RATIO_LIMIT` 调整阈值，设为 `0` 可关闭自动切片。
 
