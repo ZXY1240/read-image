@@ -1,0 +1,20 @@
+{
+  "name": "read-image",
+  "version": "0.6.0",
+  "description": "Give Claude Code vision for images, videos, web pages, and Windows screenshots through Doubao, GLM, or Qwen-compatible APIs.",
+  "author": {
+    "name": "ZXY1240",
+    "url": "https://github.com/ZXY1240"
+  },
+  "repository": "https://github.com/ZXY1240/read-image",
+  "license": "MIT",
+  "keywords": [
+    "vision",
+    "mcp",
+    "read-image",
+    "doubao",
+    "glm",
+    "qwen"
+  ],
+  "mcpServers": "./.claude-mcp.json"
+}

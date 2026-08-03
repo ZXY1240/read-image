@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.0
+
+- 新增 Claude Code 原生插件包装：`.claude-plugin/plugin.json`、`.claude-mcp.json`、`CLAUDE.md`。
+- 新增 `scripts/install_claude_plugin.ps1`，可把插件持久安装到 `~/.claude/skills/read-image`。
+- SKILL 和 CLAUDE.md 增加 Claude Code 工具名前缀说明，确保图片、视频、网页截图和 Windows 截图可自动调用。
+- README 增加 Claude Code 安装、权限批准和故障排查说明。
+
 ## v0.5.0
 
 - 新增 Provider 抽象：豆包保持完整视频能力，新增通用 OpenAI 兼容 Provider，可配置 GLM、Qwen 等模型。

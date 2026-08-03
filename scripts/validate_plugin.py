@@ -113,6 +113,45 @@ def main() -> int:
         errors.append("Missing read_image.providers.factory")
     if not (root / "skills" / "read-image" / "SKILL.md").is_file():
         errors.append("Missing skills/read-image/SKILL.md")
+    if not (root / "CLAUDE.md").is_file():
+        errors.append("Missing CLAUDE.md")
+    if not (root / ".claude-mcp.json").is_file():
+        errors.append("Missing .claude-mcp.json")
+
+    claude_plugin_path = root / ".claude-plugin" / "plugin.json"
+    if not claude_plugin_path.is_file():
+        errors.append("Missing .claude-plugin/plugin.json")
+    else:
+        try:
+            claude_plugin = json.loads(claude_plugin_path.read_text(encoding="utf-8"))
+            if claude_plugin.get("name") != "read-image":
+                errors.append(".claude-plugin/plugin.json name must be read-image")
+            if claude_plugin.get("mcpServers") != "./.claude-mcp.json":
+                errors.append(
+                    ".claude-plugin/plugin.json mcpServers must point to ./.claude-mcp.json"
+                )
+        except json.JSONDecodeError as exc:
+            errors.append(f".claude-plugin/plugin.json is invalid JSON: {exc}")
+
+    if (root / ".claude-mcp.json").is_file():
+        try:
+            claude_mcp = json.loads((root / ".claude-mcp.json").read_text(encoding="utf-8"))
+            servers = claude_mcp.get("mcpServers", {})
+            if not {"read-image", "capture-page", "windows-capture"}.issubset(servers):
+                errors.append(
+                    ".claude-mcp.json must include read-image, capture-page, windows-capture"
+                )
+            for server_name, server in servers.items():
+                server_args = server.get("args", [])
+                if "${CLAUDE_PLUGIN_ROOT}" not in server_args:
+                    errors.append(
+                        f".claude-mcp.json server {server_name} must use ${{CLAUDE_PLUGIN_ROOT}}"
+                    )
+        except json.JSONDecodeError as exc:
+            errors.append(f".claude-mcp.json is invalid JSON: {exc}")
+
+    if not (root / "scripts" / "install_claude_plugin.ps1").is_file():
+        errors.append("Missing scripts/install_claude_plugin.ps1")
 
     versions: list[str] = []
     init_path = root / "read_image" / "__init__.py"
@@ -129,6 +168,14 @@ def main() -> int:
         try:
             plugin = json.loads(plugin_json.read_text(encoding="utf-8"))
             version = plugin.get("version")
+            if isinstance(version, str) and version:
+                versions.append(version)
+        except json.JSONDecodeError:
+            pass
+    if claude_plugin_path.is_file():
+        try:
+            claude_plugin = json.loads(claude_plugin_path.read_text(encoding="utf-8"))
+            version = claude_plugin.get("version")
             if isinstance(version, str) and version:
                 versions.append(version)
         except json.JSONDecodeError:

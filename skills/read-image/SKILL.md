@@ -16,6 +16,8 @@ description: 读取本地图片和视频，并通过豆包、GLM 或通义千问
 
 ## 调用方式
 
+Claude Code 中 MCP 工具名可能带 `mcp__plugin_...` 前缀。调用前先运行 `/mcp` 查看当前会话中的完整工具名，然后使用实际名称。
+
 单图优先调用 MCP 工具 `read_image(image, task, mode)`。
 
 多张图片优先调用 `read_images_batch(images, task, mode, max_workers)`，不要逐张串行调用。
@@ -176,3 +178,19 @@ READ_IMAGE_API_KEY=你的豆包API Key
 `READ_IMAGE_ALLOWED_OUTPUT_DIRS` 用分号分隔允许的截图输出根目录；未设置时只允许临时目录和当前工作区。
 
 远程 URL 默认禁止本机、内网和云元数据地址；本地调试需要访问时设置 `READ_IMAGE_ALLOW_PRIVATE_URLS=1`。
+
+## Claude Code 安装
+
+Claude Code 使用原生插件方式安装：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File <插件根目录>/scripts/install_claude_plugin.ps1
+```
+
+或临时测试：
+
+```powershell
+claude --plugin-dir <插件根目录>
+```
+
+安装后重启 Claude Code，确认 `/mcp` 中能看到 `read-image`、`capture-page`、`windows-capture`，并确认 `READ_IMAGE_ENV_FILE` 指向插件根目录的 `.env`。

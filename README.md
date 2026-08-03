@@ -1,4 +1,4 @@
-# read-image v0.5.0
+# read-image v0.6.0
 
 Codex 插件：让纯文本主模型读取本地图片、批量图片、视频和网页截图。默认使用豆包 Seed 2.1 Turbo，也支持 GLM、通义千问等 OpenAI 兼容视觉接口。
 
@@ -43,6 +43,24 @@ uv run --project . read-image-windows-capture --help
 ```powershell
 uv run --project . --with playwright playwright install chromium
 ```
+
+## Claude Code 安装
+
+Claude Code 原生插件已经内置。临时测试：
+
+```powershell
+claude --plugin-dir C:\Users\admin\plugins\read-image
+```
+
+持久安装到 Claude Code 的本地 skills 目录：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\Users\admin\plugins\read-image\scripts\install_claude_plugin.ps1
+```
+
+安装后重启 Claude Code，先运行 `/mcp` 确认能看到 `read-image`、`capture-page`、`windows-capture`。Claude Code 中的 MCP 工具名可能带 `mcp__plugin_...` 前缀，以 `/mcp` 显示的实际名称调用。
+
+首次使用如果看到“Pending approval”，在 Claude Code 中批准对应 MCP 服务即可。需要 API Key 时，在插件根目录创建 `.env`，或设置 `READ_IMAGE_API_KEY` 等系统环境变量。
 
 ## 配置
 

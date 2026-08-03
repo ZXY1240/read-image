@@ -1,0 +1,40 @@
+{
+  "mcpServers": {
+    "read-image": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "read-image-vision"
+      ],
+      "env": {
+        "READ_IMAGE_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
+      }
+    },
+    "capture-page": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "read-image-capture-page"
+      ],
+      "env": {
+        "READ_IMAGE_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
+      }
+    },
+    "windows-capture": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "read-image-windows-capture"
+      ],
+      "env": {
+        "READ_IMAGE_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
+      }
+    }
+  }
+}
