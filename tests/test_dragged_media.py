@@ -56,6 +56,19 @@ def test_scan_dragged_image_sniffs_tmp_files(
     assert candidates[0].name == "random-image.tmp"
 
 
+def test_scan_dragged_image_matches_claude_underscore_name(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(drag, "drag_dirs", lambda: [str(tmp_path)])
+    monkeypatch.setattr(drag, "drag_window_minutes", lambda: 5)
+    _write_image(tmp_path / "claude_drag_v100.png")
+
+    candidates = drag.scan_dragged_media("image")
+    assert len(candidates) == 1
+    assert candidates[0].name == "claude_drag_v100.png"
+
+
 def test_scan_dragged_video_matches_extension(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -149,7 +162,7 @@ def test_read_dragged_image_no_candidates(
     )
     with pytest.raises(ReadImageError) as exc_info:
         read_image_server.read_dragged_image("task", "quick")
-    assert "没有找到最近拖拽的图片" in str(exc_info.value)
+    assert "不落盘" in str(exc_info.value)
 
 
 def test_read_dragged_video_single_candidate(

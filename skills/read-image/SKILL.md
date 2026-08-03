@@ -93,13 +93,13 @@ uv run --project <插件根目录> read-image-windows-capture --capture --mode w
 
 ## 粘贴/拖拽媒体没有可靠路径时
 
-如果会话中的图片或视频没有可直接调用的本地路径，不要自己扫描临时目录。
+Claude 桌面端不支持直接识别跨窗口拖拽的图片和视频。拖入后媒体不会落盘，纯文本模型只能看到 `[Unsupported Image]` 占位符，`read_dragged_image/read_dragged_video` 无法找到。
 
 按以下顺序处理：
 1. 优先调用 MCP 工具 `read_clipboard_image(task, mode)`。
-2. 如果剪贴板没有图片，调用 `read_dragged_image(task, mode)` 或 `read_dragged_video(task, mode)` 扫描最近拖入的文件。
-3. 如果拖拽工具返回多个候选，必须用返回列表中的路径作为 `path` 参数再次调用，不要自行选择。
-4. 如果拖拽工具也没有找到，请用户把文件保存成明确路径后调用 `read_image/read_video`。不要自行编造内容。
+2. 如果剪贴板没有图片，请用户把文件保存到明确路径，再调用 `read_image/read_video`。
+3. `read_dragged_image/read_dragged_video` 只适用于会落盘的客户端环境，Claude 桌面端不适用。
+4. 不要自行编造图片或视频内容。
 
 禁止模型自己运行 `Get-ChildItem $env:TEMP` 或按修改时间猜文件；只允许调用拖拽工具做受限扫描。禁止在回复中使用“很可能/可能是你刚粘贴的图片”这类推测表述。
 

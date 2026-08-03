@@ -1,6 +1,16 @@
-# read-image v0.9.0
+# read-image v1.0.0
 
 Codex 插件：让纯文本主模型读取本地图片、批量图片、视频和网页截图。默认使用豆包 Seed 2.1 Turbo，也支持 GLM、通义千问等 OpenAI 兼容视觉接口。
+
+[English](README.en.md) | [中文](README.md)
+
+## 已知限制
+
+Claude 桌面端不支持直接识别跨窗口拖拽的图片和视频。从其他应用拖入 Claude 桌面端聊天框的媒体不会落盘，纯文本模型只能看到 `[Unsupported Image]` 占位符，`read_dragged_image` / `read_dragged_video` 无法找到。
+
+推荐工作流：
+1. 拖入后 `Ctrl+C` 复制，调用 `read_clipboard_image`。
+2. 或把文件保存到明确路径，提供路径调用 `read_image/read_video`。
 
 ## 功能
 

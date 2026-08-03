@@ -254,10 +254,11 @@ def read_dragged_image(
     if not candidates:
         raise ReadImageError(
             tr(
-                "没有找到最近拖拽的图片。请先复制图片到剪贴板后调用 read_clipboard_image，"
-                "或保存为文件后调用 read_image。",
-                "No recently dragged image found. Copy the image to the clipboard and call "
-                "read_clipboard_image, or save it to a file and call read_image.",
+                "Claude 桌面端拖入的图片不落盘，无法扫描。请复制进剪贴板后调用 "
+                "read_clipboard_image，或保存为文件后提供路径调用 read_image。",
+                "Dragged images in Claude Desktop are not written to disk and cannot be "
+                "scanned. Copy the image to the clipboard and call read_clipboard_image, "
+                "or save it to a file and call read_image with the path.",
             )
         )
     if len(candidates) == 1:
@@ -296,8 +297,11 @@ def read_dragged_video(
     if not candidates:
         raise ReadImageError(
             tr(
-                "没有找到最近拖拽的视频。请先把视频保存为文件后调用 read_video。",
-                "No recently dragged video found. Save the video to a file and call read_video.",
+                "Claude 桌面端拖入的视频不落盘，无法扫描。请复制进剪贴板后调用 "
+                "read_clipboard_image，或保存为文件后提供路径调用 read_video。",
+                "Dragged videos in Claude Desktop are not written to disk and cannot be "
+                "scanned. Copy the image to the clipboard and call read_clipboard_image, "
+                "or save the video to a file and call read_video with the path.",
             )
         )
     if len(candidates) == 1:

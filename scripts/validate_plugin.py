@@ -176,12 +176,19 @@ def main() -> int:
         errors.append("Missing scripts/install_claude_plugin.ps1")
     if not (root / "scripts" / "save_clipboard_image.ps1").is_file():
         errors.append("Missing scripts/save_clipboard_image.ps1")
+    install_script = root / "scripts" / "install_claude_plugin.ps1"
+    if install_script.is_file():
+        install_text = install_script.read_text(encoding="utf-8")
+        if "/MIR" not in install_text or ".venv" not in install_text:
+            errors.append("install_claude_plugin.ps1 must clean stale .venv/caches")
 
     readme_path = root / "README.md"
     if readme_path.is_file():
         readme_text = readme_path.read_text(encoding="utf-8")
         if r"C:\Users\admin" in readme_text or "C:/Users/admin" in readme_text:
             errors.append("README.md must not contain local machine absolute paths")
+    if not (root / "README.en.md").is_file():
+        errors.append("Missing README.en.md")
 
     versions: list[str] = []
     init_path = root / "read_image" / "__init__.py"

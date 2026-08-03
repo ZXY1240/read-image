@@ -38,7 +38,7 @@ DEFAULT_DRAG_PATTERNS = (
     "pasted_image*",
     "current_paste*",
     "pasted_*",
-    "claude-*",
+    "claude*",
     "*.tmp",
 )
 

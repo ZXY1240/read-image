@@ -1,3 +1,3 @@
 """Doubao vision bridge for text-only Codex models."""
 
-__version__ = "0.9.0"
+__version__ = "1.0.0"

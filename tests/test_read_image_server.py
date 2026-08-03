@@ -15,6 +15,8 @@ from read_image.mcp.read_image_server import _batch_timeout_sec
 from read_image.profiles import profile_for_mode
 from read_image.providers import base as provider_base
 
+pytestmark = pytest.mark.usefixtures("fake_api_key")
+
 
 def test_batch_timeout_helper_uses_profile_plus_buffer(
     monkeypatch: pytest.MonkeyPatch,

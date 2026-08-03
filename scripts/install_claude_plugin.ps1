@@ -14,24 +14,25 @@ if (-not $target.StartsWith($skillsRoot, [System.StringComparison]::OrdinalIgnor
 
 New-Item -ItemType Directory -Path $target -Force | Out-Null
 
-$exclude = @(
-    ".git",
-    ".venv",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    "__pycache__",
-    "*.egg-info"
-)
-
-$items = Get-ChildItem -LiteralPath $repo -Force | Where-Object {
-    $name = $_.Name
-    -not ($exclude | Where-Object { $name -like $_ })
+$sourceEnv = Join-Path $repo ".env"
+$targetEnv = Join-Path $target ".env"
+$envBackup = Join-Path $env:TEMP "read-image-clipboard-env-backup"
+if ((Test-Path -LiteralPath $targetEnv) -and -not (Test-Path -LiteralPath $sourceEnv)) {
+    Copy-Item -LiteralPath $targetEnv -Destination $envBackup -Force
 }
 
-foreach ($item in $items) {
-    Copy-Item -LiteralPath $item.FullName -Destination $target -Recurse -Force
+robocopy $repo $target /MIR /XD .git .venv .mypy_cache .pytest_cache .ruff_cache __pycache__ /XF *.egg-info | Out-Null
+if ($LASTEXITCODE -ge 8) {
+    throw "robocopy failed with exit code $LASTEXITCODE"
+}
+
+if (Test-Path -LiteralPath $sourceEnv) {
+    Copy-Item -LiteralPath $sourceEnv -Destination $targetEnv -Force
+}
+elseif (Test-Path -LiteralPath $envBackup) {
+    Copy-Item -LiteralPath $envBackup -Destination $targetEnv -Force
 }
 
 Write-Output "Installed read-image plugin to: $target"
+Write-Output "Please close Claude Code before running this script for upgrades."
 Write-Output "Restart Claude Code to load the plugin."

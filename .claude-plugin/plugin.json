@@ -1,6 +1,6 @@
 {
   "name": "read-image",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "description": "Give Claude Code vision for images, videos, web pages, and Windows screenshots through Doubao, GLM, or Qwen-compatible APIs.",
   "author": {
     "name": "ZXY1240",

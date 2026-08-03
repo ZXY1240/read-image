@@ -98,9 +98,11 @@ def resolve_dragged_path(raw_path: str, kind: str) -> Path:
     if path not in candidates:
         raise ReadImageError(
             tr(
-                f"指定文件不在拖拽候选列表中：{path}。请先调用 read_dragged_{kind} 获取候选路径。",
+                f"指定文件不在拖拽候选列表中：{path}。Claude 桌面端拖入的媒体不落盘，"
+                f"请改用 read_clipboard_image 或提供明确文件路径调用 read_image/read_video。",
                 f"Selected file is not in the dragged media candidates: {path}. "
-                f"Call read_dragged_{kind} first to list candidates.",
+                f"Dragged media in Claude Desktop is not written to disk; use "
+                f"read_clipboard_image or provide an explicit path to read_image/read_video.",
             )
         )
     return path

@@ -32,6 +32,8 @@ from read_image.media import (
     video_max_bytes,
 )
 
+pytestmark = pytest.mark.usefixtures("fake_api_key")
+
 
 def _mock_http_client(monkeypatch: pytest.MonkeyPatch, handler: Any) -> httpx.Client:
     client = httpx.Client(transport=httpx.MockTransport(handler))
@@ -43,7 +45,7 @@ def _mock_video_api(monkeypatch: pytest.MonkeyPatch, handler: Any) -> httpx.Clie
     client = httpx.Client(transport=httpx.MockTransport(handler))
     monkeypatch.setattr(api, "http_client", client)
     monkeypatch.setattr(api, "default_client", api.VisionClient(client=client))
-    monkeypatch.setattr("read_image.media.validate_remote_url", lambda url: url)
+    monkeypatch.setattr("read_image.video_processing.validate_remote_url", lambda url: url)
     return client
 
 
@@ -210,7 +212,7 @@ def test_prepare_image_reports_locked_file_as_permission_error(
     def deny(*args: object, **kwargs: object) -> tuple[Image.Image, str, bool]:
         raise PermissionError("file is locked")
 
-    monkeypatch.setattr("read_image.media._decode_image_bytes", deny)
+    monkeypatch.setattr("read_image.image_processing._decode_image_bytes", deny)
     with pytest.raises(ReadImageError) as exc_info:
         prepare_image(str(path))
     assert "被占用或无权限" in str(exc_info.value)
@@ -268,7 +270,7 @@ def test_compress_video_to_limit_never_writes_over_input(
         outputs.append((input_path_arg, output_path))
         output_path.write_bytes(b"compressed")
 
-    monkeypatch.setattr("read_image.media._transcode_video", fake_transcode)
+    monkeypatch.setattr("read_image.video_processing._transcode_video", fake_transcode)
     result = _compress_video_to_limit(input_path, tmp_path, max_bytes=1024)
     assert result != input_path
     assert outputs[0][0] == input_path
@@ -614,7 +616,7 @@ def test_local_video_media_error_retries_converted_file_without_base64_fallback(
         converted.write_bytes(b"converted-video")
         return converted
 
-    monkeypatch.setattr("read_image.media._convert_video_to_mp4", fake_convert)
+    monkeypatch.setattr("read_image.video_processing._convert_video_to_mp4", fake_convert)
 
     def handler(request: httpx.Request) -> httpx.Response:
         nonlocal upload_calls, chat_calls
@@ -681,7 +683,7 @@ def test_local_video_compresses_to_base64_cap_before_fallback(
         return compressed
 
     monkeypatch.setattr(
-        "read_image.media._compress_video_to_limit",
+        "read_image.video_processing._compress_video_to_limit",
         fake_compress,
     )
 
@@ -723,7 +725,7 @@ def test_local_video_raises_friendly_error_when_base64_cap_cannot_fit(
         raise _video_too_large_error(video_base64_max_bytes())
 
     monkeypatch.setattr(
-        "read_image.media._compress_video_to_limit",
+        "read_image.video_processing._compress_video_to_limit",
         fake_compress,
     )
 

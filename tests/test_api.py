@@ -19,6 +19,8 @@ from read_image.errors import (
 from read_image.providers import base as provider_base
 from read_image.providers import doubao as provider_doubao
 
+pytestmark = pytest.mark.usefixtures("fake_api_key")
+
 
 def _json_response(
     status_code: int,

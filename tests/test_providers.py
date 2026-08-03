@@ -11,6 +11,8 @@ from read_image.providers.doubao import DoubaoProvider
 from read_image.providers.factory import create_provider
 from read_image.providers.openai_compatible import OpenAICompatibleProvider
 
+pytestmark = pytest.mark.usefixtures("fake_api_key")
+
 
 def test_create_provider_defaults_to_doubao(
     monkeypatch: pytest.MonkeyPatch,
