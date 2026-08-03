@@ -1,6 +1,6 @@
-# read-image v0.4.0
+# read-image v0.5.0
 
-Codex 插件：让纯文本主模型通过豆包 Seed 2.1 Turbo 读取本地图片、批量图片、视频和网页截图。
+Codex 插件：让纯文本主模型读取本地图片、批量图片、视频和网页截图。默认使用豆包 Seed 2.1 Turbo，也支持 GLM、通义千问等 OpenAI 兼容视觉接口。
 
 ## 功能
 
@@ -18,8 +18,10 @@ flowchart LR
   A[Codex / AI Agent] --> B[MCP read-image]
   A --> C[MCP capture-page]
   A --> D[MCP windows-capture]
-  B --> E[豆包 Files API / Chat API]
+  B --> E[Vision Provider]
   B --> F[FFmpeg 转码/压缩]
+  E --> E1[豆包 Files API / Chat API]
+  E --> E2[GLM / Qwen OpenAI 兼容]
   C --> G[Playwright]
   D --> H[PowerShell + Windows API]
   C --> B
@@ -56,7 +58,51 @@ READ_IMAGE_API_KEY=你的豆包 API Key
 
 截图输出目录默认只允许临时目录和当前工作区；需要其他目录时通过 `READ_IMAGE_ALLOWED_OUTPUT_DIRS` 配置。`READ_VIDEO_KEEP_AUDIO=1` 可保留视频音轨，默认继续去掉音轨以兼容当前豆包视频理解。
 
-远程 URL 默认禁止本机、内网和云元数据地址；本地调试需要访问时设置 `READ_IMAGE_ALLOW_PRIVATE_URLS=1`。视频任务使用独立工作池，可通过 `READ_IMAGE_VIDEO_WORKERS` 调整并发数，默认 2。
+远程 URL 默认禁止本机、内网和云元数据地址；本地调试需要访问时设置 `READ_IMAGE_ALLOW_PRIVATE_URLS=1`。视频任务使用独立工作池，可通过 `READ_VIDEO_WORKERS` 调整并发数，默认 2；旧的 `READ_IMAGE_VIDEO_WORKERS` 继续兼容。
+
+## 切换视觉 Provider
+
+默认 `READ_IMAGE_PROVIDER=auto`：设置 `READ_IMAGE_BASE_URL` 和 `READ_IMAGE_MODEL` 后自动切换为通用 OpenAI 兼容 Provider，否则使用豆包。
+
+豆包：
+
+```powershell
+READ_IMAGE_PROVIDER=doubao
+READ_IMAGE_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+READ_IMAGE_MODEL=doubao-seed-2-1-turbo-260628
+```
+
+GLM：
+
+```powershell
+READ_IMAGE_PROVIDER=openai_compatible
+READ_IMAGE_BASE_URL=https://open.bigmodel.cn/api/paas/v4
+READ_IMAGE_MODEL=glm-5v-turbo
+```
+
+通义千问低成本全能：
+
+```powershell
+READ_IMAGE_PROVIDER=openai_compatible
+READ_IMAGE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+READ_IMAGE_MODEL=qwen3-omni-flash
+```
+
+通义千问更强视觉：
+
+```powershell
+READ_IMAGE_PROVIDER=openai_compatible
+READ_IMAGE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+READ_IMAGE_MODEL=qwen3-vl-plus
+```
+
+以上模型 ID 只是示例，请以你实际开通的模型为准。通用 Provider 的图片会按 OpenAI 兼容格式发送；视频会尝试 `video_url`，如果目标模型不接受会返回“当前模型不支持视频”。GLM/Qwen 的 thinking 参数由 `READ_IMAGE_OPENAI_THINKING_PARAM=auto|thinking|enable_thinking|none` 控制，`auto` 会按模型名自动选择。
+
+六档 mode 仍可单独覆盖：
+
+```powershell
+READ_IMAGE_PROFILES_JSON={"quick":{"max_tokens":256,"timeout_sec":20,"thinking":false,"prompt":"只输出关键文字"}}
+```
 
 ## 调用示例
 
@@ -99,7 +145,7 @@ paths = await capture_page(
 - 远程 URL 被拒绝：插件默认阻止内网/本机地址；确需访问时设置 `READ_IMAGE_ALLOW_PRIVATE_URLS=1`。
 - 网页截图失败：确认已安装 Playwright 浏览器，或设置 `CAPTURE_PAGE_BROWSER=msedge` / `chrome`。
 - Windows 截图失败：先用 `list_windows()` 查看准确窗口标题；硬件加速窗口可能退回屏幕拷贝。
-- 视频处理慢：视频任务运行在独立工作池中，可通过 `READ_IMAGE_VIDEO_WORKERS` 增加并发。
+- 视频处理慢：视频任务运行在独立工作池中，可通过 `READ_VIDEO_WORKERS` 增加并发。
 
 ## 模式
 

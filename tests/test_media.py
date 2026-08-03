@@ -762,17 +762,26 @@ def test_video_conversion_depth_guard(
 ) -> None:
     video = tmp_path / "tiny.mp4"
     video.write_bytes(b"video-bytes")
-    monkeypatch.setattr(api, "upload_video_file", lambda path: "file-abc")
+    provider = api.default_client.provider
     monkeypatch.setattr(
-        api,
+        provider,
+        "upload_video_file",
+        lambda path, timeout_sec=None: "file-abc",
+    )
+    monkeypatch.setattr(
+        provider,
         "delete_video_file",
-        lambda file_id, timeout_sec=30: None,
+        lambda file_id, timeout_sec=30, retries=2: None,
     )
 
     def reject(*args: object, **kwargs: object) -> str:
         raise VisionMediaError("bad media", status_code=415)
 
-    monkeypatch.setattr(api, "call_video_file_id", reject)
+    monkeypatch.setattr(
+        provider,
+        "call_video",
+        lambda video_url, task, mode, timeout_sec=None, file_id=None, gate=None: reject(),
+    )
     with pytest.raises(ReadImageError) as exc_info:
         _analyze_local_video_files(
             video,

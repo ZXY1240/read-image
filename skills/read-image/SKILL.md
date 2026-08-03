@@ -1,6 +1,6 @@
 ---
 name: read-image
-description: 读取本地图片和视频，并通过豆包 Seed 2.1 Turbo 视觉模型提取指定内容。遇到图片路径、截图、UI/网页截图、图表、错误弹窗、OCR/识别/提取图中文字、视频内容理解或任何需要看图/看视频的任务时自动启用。
+description: 读取本地图片和视频，并通过豆包、GLM 或通义千问视觉模型提取指定内容。遇到图片路径、截图、UI/网页截图、图表、错误弹窗、OCR/识别/提取图中文字、视频内容理解或任何需要看图/看视频的任务时自动启用。
 ---
 # Read Image
 
@@ -85,6 +85,12 @@ uv run --project <插件根目录> read-image-windows-capture --capture --mode w
 
 图片默认最大边 2048，`READ_IMAGE_FORMAT=auto` 会保留 PNG 等无损格式，截图文字不要手动转成 JPEG。
 
+## Provider
+
+默认使用豆包。通过 `READ_IMAGE_PROVIDER=openai_compatible` 配合 `READ_IMAGE_BASE_URL`、`READ_IMAGE_MODEL` 可切换 GLM、通义千问等 OpenAI 兼容模型。
+
+豆包保留 Files API、Base64 回退、视频转 MP4 和压缩能力。通用 Provider 的图片按 OpenAI 兼容格式发送；视频会尝试 `video_url`，目标模型不接受时返回“当前模型不支持视频”。
+
 ## mode 档位
 
 根据任务自动选择，并在调用参数中显式传 `mode`：
@@ -133,8 +139,12 @@ READ_IMAGE_API_KEY=你的豆包API Key
 `.env` 不会进入 Git；系统环境变量会优先于 `.env`。
 
 可选配置：
+- `READ_IMAGE_PROVIDER`
 - `READ_IMAGE_BASE_URL`
 - `READ_IMAGE_MODEL`
+- `READ_IMAGE_OPENAI_THINKING_PARAM`
+- `READ_IMAGE_PROFILES_JSON`
+- `READ_IMAGE_CACHE_USE_TASK`
 - `READ_IMAGE_MAX_DIMENSION`
 - `READ_IMAGE_FORMAT`
 - `READ_IMAGE_JPEG_QUALITY`
@@ -158,6 +168,7 @@ READ_IMAGE_API_KEY=你的豆包API Key
 - `READ_IMAGE_ALLOWED_OUTPUT_DIRS`
 - `READ_IMAGE_ALLOW_PRIVATE_URLS`
 - `READ_IMAGE_VIDEO_WORKERS`
+- `READ_VIDEO_WORKERS`
 - `WINDOWS_CAPTURE_DIR`
 
 公开版不包含 API Key；私人版也不再硬编码 Key。

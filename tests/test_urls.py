@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import socket
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
+import httpx
 import pytest
 
+from read_image import http
 from read_image.errors import ReadImageError
+from read_image.http import SafeHTTPTransport
 from read_image.urls import validate_remote_url
 
 
@@ -57,3 +62,56 @@ def test_allow_private_urls_env_override(
 ) -> None:
     monkeypatch.setenv("READ_IMAGE_ALLOW_PRIVATE_URLS", "1")
     assert validate_remote_url("http://127.0.0.1/") == "http://127.0.0.1/"
+
+
+def test_safe_transport_validates_before_connect(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def reject(url: str) -> str:
+        raise ReadImageError("blocked")
+
+    monkeypatch.setattr(http, "validate_remote_url", reject)
+    transport = SafeHTTPTransport()
+    request = httpx.Request("GET", "http://127.0.0.1/")
+    with pytest.raises(ReadImageError):
+        transport.handle_request(request)
+
+
+def test_safe_transport_revalidates_redirects(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            if self.path == "/start":
+                self.send_response(302)
+                self.send_header("Location", "/end")
+                self.end_headers()
+            else:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                self.wfile.write(b"ok")
+
+        def log_message(self, format: str, *args: object) -> None:
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    calls: list[str] = []
+    monkeypatch.setattr(
+        http,
+        "validate_remote_url",
+        lambda url: calls.append(str(url)) or str(url),
+    )
+    client = httpx.Client(transport=SafeHTTPTransport(), follow_redirects=True)
+    try:
+        response = client.get(f"http://127.0.0.1:{server.server_port}/start")
+    finally:
+        client.close()
+        server.shutdown()
+        thread.join(timeout=5)
+    assert response.status_code == 200
+    assert len(calls) == 2
+    assert calls[0].endswith("/start")
+    assert calls[1].endswith("/end")

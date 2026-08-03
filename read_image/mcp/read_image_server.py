@@ -4,8 +4,7 @@ import argparse
 import sys
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import TimeoutError as FutureTimeoutError
+from concurrent.futures import ThreadPoolExecutor, wait
 from typing import Annotated
 
 from mcp.server.fastmcp import FastMCP
@@ -21,6 +20,7 @@ from read_image.config import (
     DEFAULT_VIDEO_TASK,
     MAX_BATCH_WORKERS,
     cache_max_entries,
+    cache_use_task,
     env_int,
 )
 from read_image.errors import ReadImageError, tr
@@ -42,13 +42,17 @@ def _run_image_with_cache(
     task: str,
     mode: str,
     gate: api.ConcurrencyGate | None = None,
+    timeout_sec: int | None = None,
 ) -> str:
     profile = profile_for_mode(mode)
+    provider = api.default_client.provider
     key = image_cache_key(
         image_bytes,
-        task,
         profile.key,
-        api.default_client.model,
+        provider.model,
+        provider.provider_name,
+        task=task,
+        use_task=cache_use_task(),
     )
     cached = _image_cache.get(key)
     if cached is not None:
@@ -60,6 +64,7 @@ def _run_image_with_cache(
         mode,
         mime_type=mime_type,
         gate=gate,
+        timeout_sec=timeout_sec,
     )
     _image_cache.put(key, result)
     return result
@@ -177,7 +182,6 @@ def read_images_batch(
     effective_task = task.strip() if task and task.strip() else DEFAULT_BATCH_TASK
     profile_for_mode(mode)
     workers = _clamp_workers(max_workers)
-    gate = api.ConcurrencyGate(workers)
     timeout_sec = _batch_timeout_sec(mode)
     results: list[tuple[int, str, str | None, str | None] | None] = [None] * len(images)
     result_set = [False] * len(images)
@@ -201,8 +205,12 @@ def read_images_batch(
     def process(
         index: int,
         path: str,
+        deadline: float,
     ) -> tuple[int, str, str | None, str | None]:
         if stop_event.is_set():
+            return timeout_result(index, path)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
             return timeout_result(index, path)
         try:
             image_bytes, mime_type = prepare_image(path)
@@ -213,7 +221,7 @@ def read_images_batch(
                 mime_type,
                 effective_task,
                 mode,
-                gate=gate,
+                timeout_sec=max(1, int(remaining)),
             )
             return index, path, content, None
         except ReadImageError as exc:
@@ -226,26 +234,39 @@ def read_images_batch(
         thread_name_prefix="read-image-batch",
     )
     futures = [
-        executor.submit(process, index, str(path).strip()) for index, path in enumerate(images)
+        executor.submit(process, index, str(path).strip(), deadlines[index])
+        for index, path in enumerate(images)
     ]
+    index_by_future = {future: index for index, future in enumerate(futures)}
     try:
-        for index, future in enumerate(futures):
-            remaining = deadlines[index] - time.monotonic()
-            result: tuple[int, str, str | None, str | None]
+        pending = set(futures)
+        while pending:
+            remaining = min(
+                deadlines[index_by_future[future]] - time.monotonic() for future in pending
+            )
             if remaining <= 0:
-                stop_event.set()
-                result = timeout_result(index, str(images[index]).strip())
-            else:
+                break
+            done, pending = wait(pending, timeout=min(remaining, 1.0))
+            for future in done:
+                index = index_by_future[future]
                 try:
-                    result = future.result(timeout=remaining)
-                except FutureTimeoutError:
-                    stop_event.set()
-                    result = timeout_result(index, str(images[index]).strip())
+                    result = future.result()
                 except Exception as exc:
                     result = index, str(images[index]).strip(), None, f"未知错误：{exc}"
-            if result is not None and not result_set[index]:
-                results[index] = result
-                result_set[index] = True
+                if (
+                    result is not None
+                    and not result_set[index]
+                    and time.monotonic() <= deadlines[index]
+                ):
+                    results[index] = result
+                    result_set[index] = True
+        if pending:
+            stop_event.set()
+            for future in pending:
+                index = index_by_future[future]
+                if not result_set[index]:
+                    results[index] = timeout_result(index, str(images[index]).strip())
+                    result_set[index] = True
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
 

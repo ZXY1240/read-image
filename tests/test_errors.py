@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from read_image.errors import (
+    MEDIA_ERROR_CODES,
+    MEDIA_MARKERS,
     CapturePageError,
     PluginError,
     ReadImageError,
@@ -20,3 +22,8 @@ def test_media_classifier_uses_status_and_string_fallback() -> None:
     assert is_media_error(None, "UnsupportedMediaType", "detail")
     assert is_media_error(None, None, "invalid base64 video_url")
     assert not is_media_error(400, "InvalidParameter", "model not supported")
+
+
+def test_media_error_constants_are_used_by_classifier() -> None:
+    assert "unsupportedmediatype" in MEDIA_ERROR_CODES
+    assert "invalid base64 video" in MEDIA_MARKERS

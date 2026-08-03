@@ -49,6 +49,10 @@ VIDEO_TRANSCODE_TIMEOUT_SEC = 600
 VIDEO_DOWNLOAD_TIMEOUT_SEC = 120
 
 
+def _active_provider():
+    return api.default_client.provider
+
+
 def _to_rgb(image: Image.Image) -> Image.Image:
     if image.mode in ("RGBA", "LA") or (image.mode == "P" and "transparency" in image.info):
         rgba = image.convert("RGBA")
@@ -443,7 +447,7 @@ def _analyze_video_base64(
     path = _ensure_video_within_base64_cap(path, tmp_dir)
     data_url = _file_data_url(path)
     try:
-        return api.call_video(data_url, task, mode)
+        return _active_provider().call_video(data_url, task, mode)
     except ReadImageError as exc:
         if not _is_video_media_error(exc):
             raise
@@ -451,7 +455,7 @@ def _analyze_video_base64(
         converted = _ensure_video_within_base64_cap(converted, tmp_dir)
         converted_url = _file_data_url(converted)
         try:
-            return api.call_video(converted_url, task, mode)
+            return _active_provider().call_video(converted_url, task, mode)
         except ReadImageError as exc2:
             if _is_video_media_error(exc2):
                 raise ReadImageError(
@@ -465,7 +469,7 @@ def _analyze_video_base64(
 
 def _delete_uploaded_video_file(file_id: str) -> bool:
     try:
-        return api.delete_video_file(file_id)
+        return _active_provider().delete_video_file(file_id)
     except Exception:
         return False
 
@@ -486,14 +490,19 @@ def _analyze_local_video_files(
     depth: int = 0,
 ) -> str:
     try:
-        file_id = api.upload_video_file(path)
+        file_id = _active_provider().upload_video_file(path)
     except ReadImageError:
         return _analyze_video_base64(path, task, mode, tmp_dir)
 
     cleaned = False
     try:
         try:
-            result = api.call_video_file_id(file_id, task, mode)
+            result = _active_provider().call_video(
+                "",
+                task,
+                mode,
+                file_id=file_id,
+            )
             cleanup_ok = _delete_uploaded_video_file(file_id)
             cleaned = True
             return result if cleanup_ok else _with_cleanup_warning(result)
@@ -545,7 +554,7 @@ def _analyze_remote_video(url: str, task: str, mode: str | None, tmp_dir: Path) 
         return _analyze_local_video(downloaded, task, mode, tmp_dir)
 
     try:
-        return api.call_video(url, task, mode)
+        return _active_provider().call_video(url, task, mode)
     except ReadImageError as exc:
         if not _is_video_media_error(exc):
             raise

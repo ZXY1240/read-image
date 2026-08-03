@@ -8,7 +8,7 @@ from typing import Any
 import httpx
 import pytest
 
-from read_image import api
+from read_image import api, http
 from read_image.config import DEFAULT_MODEL
 from read_image.errors import (
     ReadImageError,
@@ -16,6 +16,8 @@ from read_image.errors import (
     VisionRateLimitError,
     VisionTimeoutError,
 )
+from read_image.providers import base as provider_base
+from read_image.providers import doubao as provider_doubao
 
 
 def _json_response(
@@ -156,7 +158,7 @@ def test_delete_video_file_swallows_cleanup_error(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    monkeypatch.setattr(api.logger, "propagate", True)
+    monkeypatch.setattr(http.logger, "propagate", True)
 
     def handler(request: httpx.Request) -> httpx.Response:
         return _json_response(
@@ -194,7 +196,7 @@ def test_delete_video_file_does_not_log_api_detail(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    monkeypatch.setattr(api.logger, "propagate", True)
+    monkeypatch.setattr(http.logger, "propagate", True)
 
     def handler(request: httpx.Request) -> httpx.Response:
         return _json_response(
@@ -290,9 +292,9 @@ def test_upload_video_file_deletes_uploaded_file_on_poll_failure(
     video.write_bytes(b"fake-video")
     deleted: list[str] = []
     monkeypatch.setattr(
-        api,
+        provider_doubao.DoubaoProvider,
         "delete_video_file",
-        lambda file_id, timeout_sec=30: deleted.append(file_id),
+        lambda self, file_id, timeout_sec=30, retries=2: deleted.append(file_id),
     )
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -332,9 +334,9 @@ def test_upload_video_file_uses_one_budget_when_upload_response_expires(
     monkeypatch.setattr(api.time, "sleep", lambda _: None)
     deleted: list[str] = []
     monkeypatch.setattr(
-        api,
+        provider_doubao.DoubaoProvider,
         "delete_video_file",
-        lambda file_id, timeout_sec=30: deleted.append(file_id),
+        lambda self, file_id, timeout_sec=30, retries=2: deleted.append(file_id),
     )
     video = tmp_path / "tiny.mp4"
     video.write_bytes(b"fake-video")
@@ -501,7 +503,7 @@ def test_upload_video_file_retries_rate_limit(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(api, "MAX_RATE_LIMIT_RETRIES", 1)
+    monkeypatch.setattr(provider_doubao, "MAX_RATE_LIMIT_RETRIES", 1)
     monkeypatch.setattr(api.time, "sleep", lambda _: None)
     video = tmp_path / "tiny.mp4"
     video.write_bytes(b"fake-video")
@@ -572,7 +574,7 @@ def test_call_image_sends_provided_mime_type() -> None:
 
 
 def test_rate_limit_retries_then_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(api, "MAX_RATE_LIMIT_RETRIES", 1)
+    monkeypatch.setattr(provider_base, "MAX_RATE_LIMIT_RETRIES", 1)
     monkeypatch.setattr(api.time, "sleep", lambda _: None)
     calls = 0
 
@@ -596,7 +598,7 @@ def test_rate_limit_retries_then_succeeds(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_timeout_retries_then_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(api, "MAX_TIMEOUT_RETRIES", 1)
+    monkeypatch.setattr(provider_base, "MAX_TIMEOUT_RETRIES", 1)
     monkeypatch.setattr(api.time, "sleep", lambda _: None)
     calls = 0
 
@@ -883,7 +885,7 @@ def test_api_errors_do_not_expose_key_or_media_body(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     monkeypatch.setenv("READ_IMAGE_API_KEY", "fake-doubao-key")
-    monkeypatch.setattr(api.logger, "propagate", True)
+    monkeypatch.setattr(http.logger, "propagate", True)
     secret_body = "SECRET_MEDIA_BODY"
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -897,7 +899,7 @@ def test_api_errors_do_not_expose_key_or_media_body(
         )
 
     client, _ = _client_with_handler(handler)
-    with caplog.at_level(logging.WARNING, logger="read-image-api"):
+    with caplog.at_level(logging.WARNING, logger="read-image-http"):
         with pytest.raises(ReadImageError) as exc_info:
             client.call_image(b"ZmFrZQ==", "task", "quick")
     combined = f"{str(exc_info.value)}\n{caplog.text}"

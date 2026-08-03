@@ -76,9 +76,16 @@ def main() -> int:
                 errors.append("mcpServers must include read-image, capture-page, windows-capture")
             read_image_env = set(servers.get("read-image", {}).get("env_vars", []))
             required_read_image_env = {
+                "READ_IMAGE_PROVIDER",
+                "READ_IMAGE_BASE_URL",
+                "READ_IMAGE_MODEL",
+                "READ_IMAGE_OPENAI_THINKING_PARAM",
+                "READ_IMAGE_PROFILES_JSON",
+                "READ_IMAGE_CACHE_USE_TASK",
                 "READ_IMAGE_ALLOWED_OUTPUT_DIRS",
                 "READ_IMAGE_ALLOW_PRIVATE_URLS",
                 "READ_IMAGE_VIDEO_WORKERS",
+                "READ_VIDEO_WORKERS",
                 "READ_IMAGE_BATCH_TIMEOUT_SEC",
                 "READ_VIDEO_BASE64_MAX_MB",
                 "READ_VIDEO_DOWNLOAD_MAX_MB",
@@ -102,6 +109,8 @@ def main() -> int:
         errors.append("Missing pyproject.toml")
     if not (root / "read_image" / "mcp" / "read_image_server.py").is_file():
         errors.append("Missing read_image.mcp.read_image_server")
+    if not (root / "read_image" / "providers" / "factory.py").is_file():
+        errors.append("Missing read_image.providers.factory")
     if not (root / "skills" / "read-image" / "SKILL.md").is_file():
         errors.append("Missing skills/read-image/SKILL.md")
 

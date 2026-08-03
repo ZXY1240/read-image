@@ -41,9 +41,14 @@ class ImageCache:
 
 def image_cache_key(
     image_bytes: bytes,
-    task: str,
     mode: str,
     model: str,
+    provider: str,
+    task: str = "",
+    use_task: bool = False,
 ) -> str:
     digest = hashlib.sha256(image_bytes).hexdigest()
-    return f"{digest}:{mode}:{model}:{task}"
+    key = f"{digest}:{mode}:{model}:{provider}"
+    if use_task:
+        key = f"{key}:{task}"
+    return key

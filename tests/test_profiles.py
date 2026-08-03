@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from read_image.errors import ReadImageError
@@ -40,3 +42,41 @@ def test_video_profiles_use_longer_timeouts() -> None:
     assert video_timeout_for_mode("quick") == 90
     assert video_timeout_for_mode("deep_analysis") == 600
     assert "视频" in video_prompt_for_mode("standard")
+
+
+def test_profiles_json_overrides_profile_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    overrides = {
+        "quick": {
+            "thinking": True,
+            "max_tokens": 99,
+            "timeout_sec": 12,
+            "prompt": "custom image prompt",
+            "video_prompt": "custom video prompt",
+        }
+    }
+    monkeypatch.setenv("READ_IMAGE_PROFILES_JSON", json.dumps(overrides))
+    quick = profile_for_mode("quick")
+    assert quick.thinking_enabled is True
+    assert quick.max_tokens == 99
+    assert quick.timeout_sec == 12
+    assert quick.system_prompt == "custom image prompt"
+    assert video_prompt_for_mode("quick") == "custom video prompt"
+
+
+def test_profiles_json_prompt_applies_to_video_without_video_prompt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    overrides = {"standard": {"prompt": "shared prompt"}}
+    monkeypatch.setenv("READ_IMAGE_PROFILES_JSON", json.dumps(overrides))
+    assert profile_for_mode("standard").system_prompt == "shared prompt"
+    assert video_prompt_for_mode("standard") == "shared prompt"
+
+
+def test_profiles_json_invalid_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("READ_IMAGE_PROFILES_JSON", "{not-json")
+    with pytest.raises(ReadImageError):
+        profile_for_mode("standard")

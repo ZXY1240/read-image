@@ -2,6 +2,80 @@ from __future__ import annotations
 
 import os
 
+MEDIA_ERROR_CODES: frozenset[str] = frozenset(
+    {
+        "invalidimage",
+        "invalidbase64image",
+        "invalidbase64videourl",
+        "invalidvideo",
+        "invalidmedia",
+        "unsupportedmedia",
+        "unsupportedmediatype",
+        "mediaparseerror",
+        "imagedecodeerror",
+        "videodecodeerror",
+        "badmedia",
+        "mediaerror",
+        "invalidformat",
+        "invalidmediaformat",
+        "decodeerror",
+    }
+)
+
+MEDIA_MARKERS: tuple[str, ...] = (
+    "video_url",
+    "image_url",
+    "video url",
+    "image url",
+    "invalid base64 image",
+    "invalid base64 video",
+    "invalid base64 media",
+    "invalid base64 url",
+    "invalid base64 data",
+    "base64 image",
+    "base64 video",
+    "base64 media",
+    "base64 url",
+    "base64 data",
+    "media type",
+    "unsupported media",
+    "unsupported image",
+    "unsupported video",
+    "unsupported format",
+    "invalid image",
+    "invalid video",
+    "invalid media",
+    "image format",
+    "video format",
+    "media format",
+    "image decode",
+    "video decode",
+    "media parse",
+    "media data",
+    "image input",
+    "video input",
+    "image file",
+    "video file",
+    "failed to parse image",
+    "failed to parse video",
+    "failed to parse media",
+    "image not valid",
+    "video not valid",
+    "media not valid",
+    "媒体类型",
+    "不支持的媒体",
+    "不支持的图片",
+    "不支持的视频",
+    "不支持的格式",
+    "图片格式",
+    "视频格式",
+    "媒体格式",
+    "图片解码",
+    "视频解码",
+    "无效的图片",
+    "无效的视频",
+)
+
 
 def language() -> str:
     return os.environ.get("READ_IMAGE_LANGUAGE", "zh").strip().lower() or "zh"
@@ -89,24 +163,7 @@ def is_media_error(
 ) -> bool:
     """Classify API errors as media errors using structured fields first."""
     code = normalize_error_code(error_code)
-    media_codes = {
-        "invalidimage",
-        "invalidbase64image",
-        "invalidbase64videourl",
-        "invalidvideo",
-        "invalidmedia",
-        "unsupportedmedia",
-        "unsupportedmediatype",
-        "mediaparseerror",
-        "imagedecodeerror",
-        "videodecodeerror",
-        "badmedia",
-        "mediaerror",
-        "invalidformat",
-        "invalidmediaformat",
-        "decodeerror",
-    }
-    if code in media_codes:
+    if code in MEDIA_ERROR_CODES:
         return True
     if any(
         marker in code
@@ -127,63 +184,10 @@ def is_media_error(
         return True
     if status_code == 415:
         return True
-    media_markers = (
-        "video_url",
-        "image_url",
-        "video url",
-        "image url",
-        "invalid base64 image",
-        "invalid base64 video",
-        "invalid base64 media",
-        "invalid base64 url",
-        "invalid base64 data",
-        "base64 image",
-        "base64 video",
-        "base64 media",
-        "base64 url",
-        "base64 data",
-        "media type",
-        "unsupported media",
-        "unsupported image",
-        "unsupported video",
-        "unsupported format",
-        "invalid image",
-        "invalid video",
-        "invalid media",
-        "image format",
-        "video format",
-        "media format",
-        "image decode",
-        "video decode",
-        "media parse",
-        "media data",
-        "image input",
-        "video input",
-        "image file",
-        "video file",
-        "failed to parse image",
-        "failed to parse video",
-        "failed to parse media",
-        "image not valid",
-        "video not valid",
-        "media not valid",
-        "媒体类型",
-        "不支持的媒体",
-        "不支持的图片",
-        "不支持的视频",
-        "不支持的格式",
-        "图片格式",
-        "视频格式",
-        "媒体格式",
-        "图片解码",
-        "视频解码",
-        "无效的图片",
-        "无效的视频",
-    )
     if status_code is None:
         text = f"{error_code or ''} {detail}".lower()
-        return any(marker in text for marker in media_markers)
+        return any(marker in text for marker in MEDIA_MARKERS)
     if status_code in {400, 404, 422}:
         text = f"{error_code or ''} {detail}".lower()
-        return any(marker in text for marker in media_markers)
+        return any(marker in text for marker in MEDIA_MARKERS)
     return False

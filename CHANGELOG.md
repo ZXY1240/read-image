@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.5.0
+
+- 新增 Provider 抽象：豆包保持完整视频能力，新增通用 OpenAI 兼容 Provider，可配置 GLM、Qwen 等模型。
+- 重写批量图片并发：请求级并发、单任务 deadline、429 局部退避，不再因闸门阻塞误判超时。
+- 增强 SSRF：HTTP 传输层在每次连接和重定向前重新校验目标地址，缓解 DNS 重绑定。
+- 缓存 key 默认去掉 task 文本，改为媒体哈希 + mode + model + provider；`READ_IMAGE_CACHE_USE_TASK=1` 可恢复。
+- 六档 mode 保留默认值，并支持 `READ_IMAGE_PROFILES_JSON` 覆盖 thinking、max_tokens、超时和提示词。
+- 视频工作池环境变量改为 `READ_VIDEO_WORKERS`，旧的 `READ_IMAGE_VIDEO_WORKERS` 继续兼容。
+- CI 增加真实 Playwright 网页截图和真实 Windows Notepad 截图集成测试。
+
 ## v0.4.0
 
 - 增加 SSRF 防护：远程 URL 默认禁止本机、内网和云元数据地址。

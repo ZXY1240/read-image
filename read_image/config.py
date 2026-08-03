@@ -26,6 +26,8 @@ DEFAULT_VIDEO_KEEP_AUDIO = False
 DEFAULT_VIDEO_WORKERS = 2
 DEFAULT_VIDEO_TIMEOUT_SEC = 300
 DEFAULT_CACHE_MAX_ENTRIES = 256
+DEFAULT_PROVIDER = "doubao"
+DEFAULT_OPENAI_THINKING_PARAM = "auto"
 
 
 def _load_local_env_file() -> None:
@@ -78,6 +80,25 @@ def model_name() -> str:
     return os.environ.get("READ_IMAGE_MODEL", "").strip() or DEFAULT_MODEL
 
 
+def provider_name() -> str:
+    value = os.environ.get("READ_IMAGE_PROVIDER", "").strip().lower()
+    if value in {"doubao", "openai_compatible"}:
+        return value
+    if (
+        os.environ.get("READ_IMAGE_BASE_URL", "").strip()
+        and os.environ.get("READ_IMAGE_MODEL", "").strip()
+    ):
+        return "openai_compatible"
+    return DEFAULT_PROVIDER
+
+
+def openai_thinking_param() -> str:
+    value = os.environ.get("READ_IMAGE_OPENAI_THINKING_PARAM", "").strip().lower()
+    if value in {"auto", "thinking", "enable_thinking", "none"}:
+        return value
+    return DEFAULT_OPENAI_THINKING_PARAM
+
+
 def image_format() -> str:
     value = os.environ.get("READ_IMAGE_FORMAT", "").strip().lower()
     if value in {"jpeg", "jpg"}:
@@ -87,6 +108,15 @@ def image_format() -> str:
 
 def cache_max_entries() -> int:
     return max(0, env_int("READ_IMAGE_CACHE_MAX_ENTRIES", DEFAULT_CACHE_MAX_ENTRIES))
+
+
+def cache_use_task() -> bool:
+    return os.environ.get("READ_IMAGE_CACHE_USE_TASK", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 def video_base64_max_bytes() -> int:
@@ -134,4 +164,11 @@ def allow_private_urls() -> bool:
 
 
 def video_worker_count() -> int:
-    return max(1, env_int("READ_IMAGE_VIDEO_WORKERS", DEFAULT_VIDEO_WORKERS))
+    for name in ("READ_VIDEO_WORKERS", "READ_IMAGE_VIDEO_WORKERS"):
+        raw = os.environ.get(name, "").strip()
+        if raw:
+            try:
+                return max(1, int(raw))
+            except ValueError:
+                return DEFAULT_VIDEO_WORKERS
+    return DEFAULT_VIDEO_WORKERS
