@@ -57,6 +57,18 @@ PROFILES: dict[str, Profile] = {
         ),
         video_prompt=VIDEO_PROMPTS["quick"],
     ),
+    "ocr": Profile(
+        key="ocr",
+        label="文字提取（OCR）",
+        thinking_enabled=False,
+        max_tokens=2048,
+        timeout_sec=60,
+        system_prompt=(
+            "你是 OCR 文字提取工具。完整、准确地提取图片中的全部文字，"
+            "保留原文顺序、表格结构和换行，不要改写、不要翻译、不要添加任何说明。"
+        ),
+        video_prompt=VIDEO_PROMPTS["quick"],
+    ),
     "standard": Profile(
         key="standard",
         label="标准提取",
@@ -119,6 +131,10 @@ MODE_ALIASES: dict[str, str] = {
     "fast": "quick",
     "fast_ocr": "quick",
     "快速识别": "quick",
+    "ocr": "ocr",
+    "文字识别": "ocr",
+    "提取文字": "ocr",
+    "提取图中文字": "ocr",
     "standard": "standard",
     "标准提取": "standard",
     "标准": "standard",

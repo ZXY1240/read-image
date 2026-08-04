@@ -205,6 +205,7 @@ READ_IMAGE_PROFILES_JSON={"quick":{"max_tokens":256,"timeout_sec":20,"thinking":
 | 能力 | standard（默认） | pro | max |
 |---|---|---|---|
 | 图片理解 | qwen3-vl-flash（3.3 元/M） | qwen3-vl-plus | qwen3.8-max（旗舰） |
+| OCR（mode=ocr） | **qwen-vl-ocr（0.3/0.5 元/M）** | — | — |
 | 视频理解 | qwen3-vl-flash | — | qwen3.8-max（长视频深度） |
 | 音频理解 | qwen3.5-omni-flash（1 分/分钟） | qwen3.5-omni-plus | — |
 | 语音转写 | fun-asr（0.79 元/小时） | paraformer-v2（0.288 元/小时） | — |
@@ -262,6 +263,7 @@ paths = await capture_page(
 
 ## 模式
 
+- `ocr`：文字提取（OCR 专用模型，更便宜）。
 - `quick`：快速识别，短 OCR。
 - `standard`：标准提取，默认。
 - `full`：完整提取。

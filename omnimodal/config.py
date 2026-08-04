@@ -93,6 +93,11 @@ def model_name() -> str:
     return os.environ.get("READ_IMAGE_MODEL", "").strip() or DEFAULT_MODEL
 
 
+def ocr_model_name() -> str:
+    """OCR 专用模型（mode=ocr 时使用，比通用视觉更便宜：qwen-vl-ocr 0.3/0.5 元/M）。"""
+    return os.environ.get("READ_IMAGE_OCR_MODEL", "").strip() or "qwen-vl-ocr"
+
+
 def provider_name() -> str:
     value = os.environ.get("READ_IMAGE_PROVIDER", "").strip().lower()
     if value in {"doubao", "openai_compatible"}:
