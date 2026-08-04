@@ -23,16 +23,16 @@ Claude 桌面端不支持直接识别跨窗口拖拽的图片和视频。从其�
 - `read_images_batch(images, task, mode, max_workers)`：并行读取多张图片并按原顺序返回。
 - `read_video(video, task, mode)`：读取本地视频或视频 URL，本地视频优先 Files API，失败自动回退 Base64，支持转 MP4 和压缩。
 - `read_audio(audio, task, mode)`：音频内容理解（qwen3.5-omni，支持语气/音效/混合内容）。
-- `transcribe_audio(audio, language, wait)`：语音转文字（paraformer-v2，0.288 元/小时）。
+- `transcribe_audio(audio, language, wait)`：语音转文字（fun-asr，0.79 元/小时）。
 - `capture_page(url, actions, viewport, output_dir)`：用 Playwright 交互式截图。
 - `list_windows()`：列出当前可见 Windows 窗口标题。
 - `capture_windows(mode, window, output_dir)`：截取 Windows 全屏、主屏或指定窗口并返回 PNG 路径。
 
 **生成（generation server）**
-- `generate_image(prompt, tier, size, n, wait)`：文生图（wanx，0.14 元/张起）。
-- `generate_video(prompt, tier, duration, resolution, wait)`：文生视频（wanx/happyhorse，0.24-1.2 元/秒）。
+- `generate_image(prompt, tier, size, n, wait)`：文生图（qwen-image-2.0 0.2 元/张 / wan2.7-image-pro 0.5 元/张）。
+- `generate_video(prompt, tier, duration, resolution, wait)`：文生视频（wan2.7-t2v 0.6-1 元/秒 / happyhorse 0.27-0.72 元/秒）。
 - `generate_video_from_image(image, prompt, tier, wait)`：图生视频（以图片为首帧）。
-- `generate_speech(text, voice, tier)`：语音合成 TTS（cosyvoice，2 元/万字符）。
+- `generate_speech(text, voice, tier)`：语音合成 TTS（qwen-audio-3.0-tts 1 元/万字符 / cosyvoice-v3.5-plus 1.5 元/万字符）。
 - `get_generation_result(task_id)`：查询异步生成/转写任务结果。
 
 **tier 档位**：每类能力有完整模型梯度（standard/pro/max），按需求自动选择——日常用 standard（便宜），重要任务用 pro/max。`READ_IMAGE_DEFAULT_TIER` 全局调档。
@@ -207,15 +207,15 @@ READ_IMAGE_PROFILES_JSON={"quick":{"max_tokens":256,"timeout_sec":20,"thinking":
 | 图片理解 | qwen3-vl-flash（3.3 元/M） | qwen3-vl-plus | qwen3.8-max（旗舰） |
 | 视频理解 | qwen3-vl-flash | — | qwen3.8-max（长视频深度） |
 | 音频理解 | qwen3.5-omni-flash（1 分/分钟） | qwen3.5-omni-plus | — |
-| 语音转写 | paraformer-v2（0.288 元/小时） | paraformer-realtime-v2 | — |
-| 文生图 | wanx2.1-t2i-turbo（0.14 元/张） | wanx2.1-t2i-plus（0.2 元/张） | — |
-| 文生视频 | wanx2.1-t2v-turbo（0.24 元/秒） | wan2.6-t2v（0.45 元/秒，带音频） | happyhorse-1.1-t2v（1.2 元/秒） |
-| 图生视频 | wanx2.1-i2v-turbo | wan2.6-i2v-flash | — |
-| 语音合成 | cosyvoice-v2（2 元/万字符） | cosyvoice-v3 | — |
+| 语音转写 | fun-asr（0.79 元/小时） | paraformer-v2（0.288 元/小时） | — |
+| 文生图 | qwen-image-2.0（0.2 元/张） | wan2.7-image-pro（0.5 元/张） | — |
+| 文生视频 | wan2.7-t2v（0.6 元/秒） | wan2.7-t2v（1 元/秒） | happyhorse-1.1-t2v（0.72 元/秒） |
+| 图生视频 | wan2.7-i2v | happyhorse-1.1-i2v | — |
+| 语音合成 | qwen-audio-3.0-tts（1 元/万字符） | cosyvoice-v3.5-plus（1.5 元/万字符） | — |
 
 **档位自动选择规则**（SKILL.md 指导主模型）：无修饰词或"随便/快速"→ standard；"高质量/专业/商用"→ pro；"电影级/旗舰/大片"→ max。`READ_IMAGE_DEFAULT_TIER=standard|pro|max` 可全局调档——**DeepSeek V5 Pro 上线后主模型变强，可将默认档上调至 pro/max**，多模态能力随之升级。
 
-**费用提示**：所有生成工具调用前，主模型会先向用户说明预计费用（如"生成 5 秒视频约 1.2 元"），用户确认后才执行；结果返回时附实际费用。
+**费用提示**：所有生成工具调用前，主模型会先向用户说明预计费用（如"生成 5 秒 wan2.7-t2v 视频约 3 元"），用户确认后才执行；结果返回时附实际费用。
 
 ## 调用示例（生成）
 

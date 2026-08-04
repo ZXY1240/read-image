@@ -33,13 +33,14 @@ DEFAULT_POLL_RETRIES = 2
 # Result URLs are only valid 24h; download immediately after success.
 RESULT_URL_TTL_SEC = 24 * 3600
 
-# Per-model price hints (yuan). Source: qianwenai.com/models marketplace cards.
-PRICE_IMAGE_TURBO = 0.14
-PRICE_IMAGE_PLUS = 0.20
-PRICE_VIDEO_TURBO_PER_SEC = 0.24
-PRICE_VIDEO_WAN26_PER_SEC = 0.45
-PRICE_VIDEO_HAPPYHORSE_PER_SEC = 1.20
-PRICE_TTS_PER_1000_CHARS = 0.20  # cosyvoice, 2 yuan / 10k chars
+# Per-model price hints (yuan). Source: user's qianwenai.com model marketplace
+# screenshots (2026-08-05). Kept in sync with README pricing table.
+PRICE_IMAGE_WAN27 = 0.50  # wan2.7-image-pro, per image
+PRICE_IMAGE_QWEN20 = 0.20  # qwen-image-2.0, per image
+PRICE_VIDEO_WAN27_PER_SEC = 0.60  # wan2.7-t2v, 0.6-1 yuan/sec (use low end)
+PRICE_VIDEO_HAPPYHORSE_PER_SEC = 0.27  # happyhorse-1.1-t2v, 0.27-0.72 yuan/sec
+PRICE_TTS_PER_10K_CHARS = 1.00  # qwen-audio-3.0-tts
+PRICE_TTS_COSY_V35_PER_10K = 1.50  # cosyvoice-v3.5-plus
 
 
 @dataclass

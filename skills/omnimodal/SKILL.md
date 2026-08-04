@@ -139,7 +139,7 @@ Claude 桌面端不支持直接识别跨窗口拖拽的图片和视频。拖入�
 用户提供音频文件或音频 URL、或要求理解音频内容时调用：
 
 - `read_audio(audio, task, mode)`：音频内容理解（语气、音效、混合内容）。短音频（≤3 分钟）直接用；长音频优先走转写。
-- `transcribe_audio(audio, language, wait)`：语音转文字（paraformer-v2，0.288 元/小时，每月 10 小时免费）。`wait=false` 时返回 task_id，稍后用 `get_generation_result` 查询。
+- `transcribe_audio(audio, language, wait)`：语音转文字（fun-asr，0.79 元/小时；paraformer-v2 0.288 元/小时，每月 10 小时免费）。`wait=false` 时返回 task_id，稍后用 `get_generation_result` 查询。
 
 音频理解 token 费是文本的 8 倍（27 元/M），长音频先转写更省钱。
 
@@ -147,13 +147,13 @@ Claude 桌面端不支持直接识别跨窗口拖拽的图片和视频。拖入�
 
 用户要求"生成/制作"图片、视频或语音时调用（generation server）：
 
-- `generate_image(prompt, tier, size, n, wait)`：文生图。standard 档 0.14 元/张，pro 档 0.2 元/张。
-- `generate_video(prompt, tier, duration, resolution, wait)`：文生视频。standard 档 0.24 元/秒，pro 档 wan2.6 0.45 元/秒，max 档 happyhorse 1.2 元/秒。
+- `generate_image(prompt, tier, size, n, wait)`：文生图。standard 档 qwen-image-2.0 0.2 元/张，pro 档 wan2.7-image-pro 0.5 元/张。
+- `generate_video(prompt, tier, duration, resolution, wait)`：文生视频。standard 档 wan2.7-t2v 0.6 元/秒，pro 档 wan2.7-t2v 1 元/秒，max 档 happyhorse-1.1-t2v 0.72 元/秒。
 - `generate_video_from_image(image, prompt, tier, wait)`：图生视频（以图片为首帧）。
-- `generate_speech(text, voice, tier)`：语音合成 TTS（cosyvoice，2 元/万字符）。
+- `generate_speech(text, voice, tier)`：语音合成 TTS（qwen-audio-3.0-tts 1 元/万字符 / cosyvoice-v3.5-plus 1.5 元/万字符）。
 - `get_generation_result(task_id)`：查询异步任务结果。
 
-**费用提示（强制规则）**：调用任何生成工具**之前**，必须先向用户说明本次预计费用（如"生成 5 秒 720P 视频约 1.2 元，是否继续？"），用户同意后才调用。生成结果返回时附实际费用。
+**费用提示（强制规则）**：调用任何生成工具**之前**，必须先向用户说明本次预计费用（如"生成 5 秒 wan2.7 视频约 3 元，是否继续？"），用户同意后才调用。生成结果返回时附实际费用。
 
 **tier 档位（模型梯度，按需自动选择）**：
 - 用户无修饰词或说"随便/简单/快速/示意" → `standard`（便宜够用）

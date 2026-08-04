@@ -69,24 +69,28 @@ def _format_cost(spec: GenerationSpec, detail: str) -> str:
 
 
 def _t2i_spec(tier: str) -> GenerationSpec:
-    model = "wanx2.1-t2i-plus" if tier == "pro" else "wanx2.1-t2i-turbo"
+    # From user's qianwenai.com screenshots: wan2.7-image-pro 0.5 yuan/img,
+    # qwen-image-2.0 0.2 yuan/img. Default to the cheaper one.
+    model = "qwen-image-2.0" if tier == "standard" else "wan2.7-image-pro"
+    price = 0.20 if tier == "standard" else 0.50
     return GenerationSpec(
         endpoint=T2I_ENDPOINT,
         model=model,
         poll_interval=10,
         timeout_sec=generation_timeout_sec(),
-        price_hint=0.20 if tier == "pro" else 0.14,
+        price_hint=price,
         price_unit=tr("张", "image"),
     )
 
 
 def _t2v_spec(tier: str) -> GenerationSpec:
+    # From screenshots: wan2.7-t2v 0.6-1 yuan/sec, happyhorse-1.1-t2v 0.27-0.72.
     if tier == "max":
-        model, price, unit = "happyhorse-1.1-t2v", 1.20, tr("秒", "sec")
+        model, price, unit = "happyhorse-1.1-t2v", 0.72, tr("秒", "sec")
     elif tier == "pro":
-        model, price, unit = "wan2.6-t2v", 0.45, tr("秒", "sec")
+        model, price, unit = "wan2.7-t2v", 1.00, tr("秒", "sec")
     else:
-        model, price, unit = "wanx2.1-t2v-turbo", 0.24, tr("秒", "sec")
+        model, price, unit = "wan2.7-t2v", 0.60, tr("秒", "sec")
     return GenerationSpec(
         endpoint=T2V_ENDPOINT,
         model=model,
@@ -98,14 +102,17 @@ def _t2v_spec(tier: str) -> GenerationSpec:
 
 
 def _tts_spec(tier: str) -> GenerationSpec:
-    model = "cosyvoice-v3" if tier == "pro" else "cosyvoice-v2"
+    # From screenshots: qwen-audio-3.0-tts 1 yuan/10k chars,
+    # cosyvoice-v3.5-plus 1.5 yuan/10k chars.
+    model = "cosyvoice-v3.5-plus" if tier == "pro" else "qwen-audio-3.0-tts"
+    price = 1.50 if tier == "pro" else 1.00
     return GenerationSpec(
         endpoint=TTS_ENDPOINT,
         model=model,
         poll_interval=10,
         timeout_sec=generation_timeout_sec(),
-        price_hint=0.20,  # per 1000 chars
-        price_unit=tr("千字符", "k chars"),
+        price_hint=price,
+        price_unit=tr("万字符", "10k chars"),
     )
 
 
@@ -125,7 +132,7 @@ async def generate_image(
     ] = True,
     ctx: Context | None = None,
 ) -> dict[str, Any]:
-    """文生图。standard 档 0.14 元/张，pro 档 0.2 元/张。"""
+    """文生图。standard 档 qwen-image-2.0 0.2 元/张，pro 档 wan2.7-image-pro 0.5 元/张。"""
     tier = tier if tier in {"standard", "pro"} else _default_tier()
     if n < 1 or n > 4:
         raise ReadImageError(tr("生成数量 n 必须在 1-4 之间。", "n must be 1-4."))
@@ -164,7 +171,7 @@ async def generate_video(
     ] = True,
     ctx: Context | None = None,
 ) -> dict[str, Any]:
-    """文生视频。standard 档 0.24 元/秒，5 秒约 1.2 元。"""
+    """文生视频。standard 档 wan2.7-t2v 0.6 元/秒，pro 档 1 元/秒，max 档 happyhorse 0.72 元/秒。"""
     tier = tier if tier in {"standard", "pro", "max"} else _default_tier()
     if duration < 1 or duration > max_video_duration():
         raise ReadImageError(
@@ -215,13 +222,13 @@ async def generate_video_from_image(
     tier = tier if tier in {"standard", "pro"} else _default_tier()
     spec = GenerationSpec(
         endpoint=T2V_ENDPOINT,
-        model="wanx2.1-i2v-turbo" if tier == "standard" else "wan2.6-i2v-flash",
+        model="wan2.7-i2v" if tier == "standard" else "happyhorse-1.1-i2v",
         poll_interval=15,
         timeout_sec=video_generation_timeout_sec(),
-        price_hint=0.24,
+        price_hint=0.60,
         price_unit=tr("秒", "sec"),
     )
-    cost = f"预计 5 秒约 {0.24 * 5:.2f} 元"
+    cost = f"预计 5 秒约 {0.60 * 5:.2f} 元"
     payload = {
         "model": spec.model,
         "input": {"prompt": prompt, "img_url": image},
@@ -255,11 +262,12 @@ async def generate_speech(
         )] = "standard",
     ctx: Context | None = None,
 ) -> dict[str, Any]:
-    """语音合成 TTS。2 元/万字符（约 0.4 元/千汉字）。"""
+    """语音合成 TTS。standard 档 qwen-audio-3.0-tts 1 元/万字符，
+    pro 档 cosyvoice-v3.5-plus 1.5 元/万字符。"""
     tier = tier if tier in {"standard", "pro"} else _default_tier()
     spec = _tts_spec(tier)
     chars = len(text) * 2  # 汉字按2字符计费
-    cost = f"预计 {chars / 1000 * 0.2:.3f} 元（约 {chars} 字符）"
+    cost = f"预计 {chars / 10000 * spec.price_hint:.3f} 元（约 {chars} 字符）"
     payload = {
         "model": spec.model,
         "input": {"text": text, "voice": voice, "format": "mp3", "sample_rate": 24000},
