@@ -1,6 +1,6 @@
-# read-image v1.0.0
+# read-image v1.1.0
 
-read-image gives text-only models vision support for local images, batches, videos, web pages, and Windows screenshots. It defaults to Doubao Seed 2.1 Turbo and supports GLM and Qwen through OpenAI-compatible providers.
+read-image gives text-only models vision support for local images, batches, videos, web pages, and Windows screenshots. It defaults to Qwen3-VL-Flash (DashScope compatible mode) and supports GLM and Doubao through OpenAI-compatible providers.
 
 [English](README.en.md) | [中文](README.md)
 
@@ -35,7 +35,10 @@ The plugin uses `uv` and exposes three MCP servers:
 Enable the plugin in Codex. The local `.env` file can store your API key:
 
 ```powershell
-READ_IMAGE_API_KEY=your-doubao-api-key
+READ_IMAGE_API_KEY=your-dashscope-api-key
+READ_IMAGE_PROVIDER=openai_compatible
+READ_IMAGE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+READ_IMAGE_MODEL=qwen3-vl-flash
 ```
 
 ### Claude Code
@@ -57,7 +60,7 @@ claude --plugin-dir <plugin-root>
 Key environment variables:
 
 - `READ_IMAGE_API_KEY` / `ARK_API_KEY` / `DOUBAO_API_KEY` / `VISION_API_KEY`
-- `READ_IMAGE_PROVIDER`: `auto`, `doubao`, or `openai_compatible`
+- `READ_IMAGE_PROVIDER`: `openai_compatible` (default), `doubao`, or `auto`
 - `READ_IMAGE_BASE_URL`
 - `READ_IMAGE_MODEL`
 - `READ_IMAGE_CACHE_USE_TASK` (default enabled)

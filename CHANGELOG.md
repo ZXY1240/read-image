@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.0
+
+- 默认视觉模型切换为通义千问 qwen3-vl-flash（DashScope 兼容模式），新增 `READ_IMAGE_PROVIDER=openai_compatible` + `READ_IMAGE_BASE_URL` + `READ_IMAGE_MODEL` 配置。
+- 图片与视频均走 OpenAI 兼容格式；视频自动回退 Base64 通道（上限 `READ_VIDEO_BASE64_MAX_MB`，默认 45MB）。
+- 豆包保留为可回退 Provider（`READ_IMAGE_PROVIDER=doubao`），Files API 视频上传能力不变。
+- 同步更新 README / README.en / SKILL / .env.example 的默认模型与配置示例。
+
 ## v1.0.0
 
 - 正式稳定版发布。

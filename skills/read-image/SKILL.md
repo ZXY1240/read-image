@@ -1,6 +1,6 @@
 ---
 name: read-image
-description: 读取本地图片和视频，并通过豆包、GLM 或通义千问视觉模型提取指定内容。遇到图片路径、截图、UI/网页截图、图表、错误弹窗、OCR/识别/提取图中文字、视频内容理解或任何需要看图/看视频的任务时自动启用。
+description: 读取本地图片和视频，并通过通义千问、GLM 或豆包视觉模型提取指定内容。遇到图片路径、截图、UI/网页截图、图表、错误弹窗、OCR/识别/提取图中文字、视频内容理解或任何需要看图/看视频的任务时自动启用。
 ---
 # Read Image
 
@@ -82,10 +82,10 @@ uv run --project <插件根目录> read-image-windows-capture --capture --mode w
 
 ## 视频处理规则
 
-`read_video(video, task, mode)` 直接把整段视频发送给豆包：
+`read_video(video, task, mode)` 直接把整段视频发送给当前视觉模型：
 - 本地视频默认 50MB 以内，超过会自动用 FFmpeg 压缩。
-- 本地视频优先走 Files API；模型不支持或上传失败时自动回退 Base64。
-- 格式不被豆包接受时，会自动转成 MP4/H.264 后重试一次。
+- 本地视频优先走 Files API（豆包）；不支持文件上传的模型（如 qwen3-vl-flash）自动回退 Base64，上限 `READ_VIDEO_BASE64_MAX_MB`（默认 45MB）。
+- 格式不被模型接受时，会自动转成 MP4/H.264 后重试一次。
 - 转换或压缩失败时返回“不支持此视频格式”或“视频文件较大，不支持上传”，并给出解决建议。
 - 六档 `mode` 与图片一致，但视频使用更长超时：quick 90s、standard 180s、full 360s、quick_analysis 180s、balanced_analysis 360s、deep_analysis 600s。
 
@@ -107,9 +107,9 @@ Claude 桌面端不支持直接识别跨窗口拖拽的图片和视频。拖入�
 
 ## Provider
 
-默认使用豆包。通过 `READ_IMAGE_PROVIDER=openai_compatible` 配合 `READ_IMAGE_BASE_URL`、`READ_IMAGE_MODEL` 可切换 GLM、通义千问等 OpenAI 兼容模型。
+默认使用通义千问 qwen3-vl-flash（DashScope 兼容模式），配置见下方环境变量。通过 `READ_IMAGE_PROVIDER` 可切换：`doubao`（豆包，Files API 视频上传）、`openai_compatible`（GLM、通义千问等 OpenAI 兼容模型）。
 
-豆包保留 Files API、Base64 回退、视频转 MP4 和压缩能力。通用 Provider 的图片按 OpenAI 兼容格式发送；视频会尝试 `video_url`，目标模型不接受时返回“当前模型不支持视频”。
+切回豆包时设置 `READ_IMAGE_PROVIDER=doubao` 并配置豆包的 `READ_IMAGE_BASE_URL`、`READ_IMAGE_MODEL`。豆包保留 Files API、Base64 回退、视频转 MP4 和压缩能力。通用 Provider 的图片按 OpenAI 兼容格式发送；视频会自动回退 Base64，目标模型不接受时返回“当前模型不支持视频”。
 
 ## mode 档位
 
@@ -148,12 +148,15 @@ Claude 桌面端不支持直接识别跨窗口拖拽的图片和视频。拖入�
 
 ## 环境变量
 
-API Key：`ARK_API_KEY`，也兼容 `READ_IMAGE_API_KEY`、`DOUBAO_API_KEY`、`VISION_API_KEY`。
+API Key：`READ_IMAGE_API_KEY`（DashScope 的 `sk-` key），也兼容 `ARK_API_KEY`、`DOUBAO_API_KEY`、`VISION_API_KEY`。
 
 推荐在插件根目录创建本地 `.env`：
 
 ```powershell
-READ_IMAGE_API_KEY=你的豆包API Key
+READ_IMAGE_API_KEY=你的DashScope API Key
+READ_IMAGE_PROVIDER=openai_compatible
+READ_IMAGE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+READ_IMAGE_MODEL=qwen3-vl-flash
 ```
 
 `.env` 不会进入 Git；系统环境变量会优先于 `.env`。

@@ -1,6 +1,6 @@
-# read-image v1.0.0
+# read-image v1.1.0
 
-Codex 插件：让纯文本主模型读取本地图片、批量图片、视频和网页截图。默认使用豆包 Seed 2.1 Turbo，也支持 GLM、通义千问等 OpenAI 兼容视觉接口。
+Codex 插件：让纯文本主模型读取本地图片、批量图片、视频和网页截图。默认使用通义千问 qwen3-vl-flash（DashScope 兼容模式），也支持 GLM 和豆包等 OpenAI 兼容视觉接口。
 
 [English](README.en.md) | [中文](README.md)
 
@@ -130,22 +130,33 @@ await read_dragged_image(
 公开仓库不包含任何 API Key。使用前在插件根目录创建本地 `.env`：
 
 ```powershell
-READ_IMAGE_API_KEY=你的豆包 API Key
+READ_IMAGE_API_KEY=你的 DashScope API Key
+READ_IMAGE_PROVIDER=openai_compatible
+READ_IMAGE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+READ_IMAGE_MODEL=qwen3-vl-flash
 ```
 
 也兼容系统环境变量 `ARK_API_KEY`、`DOUBAO_API_KEY`、`VISION_API_KEY`。`.env` 不会进入 Git；更多配置参考 `.env.example`。
 
 图片默认最大边为 2048，`READ_IMAGE_FORMAT=auto` 会保留 PNG 等无损格式，避免截图文字被 JPEG 压缩弄糊。批量识别支持 `READ_IMAGE_BATCH_TIMEOUT_SEC` 单图超时。视频新增 `READ_VIDEO_BASE64_MAX_MB`（Base64 回退上限 45MB）、`READ_VIDEO_DOWNLOAD_MAX_MB`（远程下载上限 512MB）和 `READ_VIDEO_FILES_API_TIMEOUT_SEC`。
 
-截图输出目录默认只允许临时目录和当前工作区；需要其他目录时通过 `READ_IMAGE_ALLOWED_OUTPUT_DIRS` 配置。`READ_VIDEO_KEEP_AUDIO=1` 可保留视频音轨，默认继续去掉音轨以兼容当前豆包视频理解。
+截图输出目录默认只允许临时目录和当前工作区；需要其他目录时通过 `READ_IMAGE_ALLOWED_OUTPUT_DIRS` 配置。`READ_VIDEO_KEEP_AUDIO=1` 可保留视频音轨，默认去掉音轨以兼容当前视觉模型。
 
 远程 URL 默认禁止本机、内网和云元数据地址；本地调试需要访问时设置 `READ_IMAGE_ALLOW_PRIVATE_URLS=1`。视频任务使用独立工作池，可通过 `READ_VIDEO_WORKERS` 调整并发数，默认 2；旧的 `READ_IMAGE_VIDEO_WORKERS` 继续兼容。
 
 ## 切换视觉 Provider
 
-默认 `READ_IMAGE_PROVIDER=auto`：设置 `READ_IMAGE_BASE_URL` 和 `READ_IMAGE_MODEL` 后自动切换为通用 OpenAI 兼容 Provider，否则使用豆包。
+默认使用通义千问 qwen3-vl-flash（DashScope 兼容模式）：
 
-豆包：
+```powershell
+READ_IMAGE_PROVIDER=openai_compatible
+READ_IMAGE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+READ_IMAGE_MODEL=qwen3-vl-flash
+```
+
+也可设置 `READ_IMAGE_PROVIDER=auto`：设置了 `READ_IMAGE_BASE_URL` 和 `READ_IMAGE_MODEL` 时自动切换为通用 OpenAI 兼容 Provider，否则使用豆包。
+
+切回豆包：
 
 ```powershell
 READ_IMAGE_PROVIDER=doubao
@@ -161,23 +172,7 @@ READ_IMAGE_BASE_URL=https://open.bigmodel.cn/api/paas/v4
 READ_IMAGE_MODEL=glm-5v-turbo
 ```
 
-通义千问低成本全能：
-
-```powershell
-READ_IMAGE_PROVIDER=openai_compatible
-READ_IMAGE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-READ_IMAGE_MODEL=qwen3-omni-flash
-```
-
-通义千问更强视觉：
-
-```powershell
-READ_IMAGE_PROVIDER=openai_compatible
-READ_IMAGE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-READ_IMAGE_MODEL=qwen3-vl-plus
-```
-
-以上模型 ID 只是示例，请以你实际开通的模型为准。通用 Provider 的图片会按 OpenAI 兼容格式发送；视频会尝试 `video_url`，如果目标模型不接受会返回“当前模型不支持视频”。GLM/Qwen 的 thinking 参数由 `READ_IMAGE_OPENAI_THINKING_PARAM=auto|thinking|enable_thinking|none` 控制，`auto` 会按模型名自动选择。
+以上模型 ID 只是示例，请以你实际开通的模型为准。通用 Provider 的图片会按 OpenAI 兼容格式发送；视频会自动回退 Base64（上限 `READ_VIDEO_BASE64_MAX_MB`，默认 45MB），目标模型不接受时返回“当前模型不支持视频”。GLM/Qwen 的 thinking 参数由 `READ_IMAGE_OPENAI_THINKING_PARAM=auto|thinking|enable_thinking|none` 控制，`auto` 会按模型名自动选择。
 
 六档 mode 仍可单独覆盖：
 
@@ -222,7 +217,7 @@ paths = await capture_page(
 
 ## 故障排查
 
-- API Key 无效：检查插件根目录 `.env` 中 `READ_IMAGE_API_KEY` 是否为完整的豆包 API Key，然后重新加载 Codex 插件。
+- API Key 无效：检查插件根目录 `.env` 中 `READ_IMAGE_API_KEY` 是否为完整的 DashScope API Key，然后重新加载 Codex 插件。
 - 远程 URL 被拒绝：插件默认阻止内网/本机地址；确需访问时设置 `READ_IMAGE_ALLOW_PRIVATE_URLS=1`。
 - 网页截图失败：确认已安装 Playwright 浏览器，或设置 `CAPTURE_PAGE_BROWSER=msedge` / `chrome`。
 - Windows 截图失败：先用 `list_windows()` 查看准确窗口标题；硬件加速窗口可能退回屏幕拷贝。
