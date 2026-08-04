@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.0.0
+
+- 项目更名为 omnimodal（原 read-image），包名 `read_image` → `omnimodal`，仓库迁移至 https://github.com/good-boy4069/Deepseek-omnimodal。
+- 从视觉（图片/视频识别）扩展为全模态：新增音频识别、文生图、文生视频与 TTS 语音生成能力（新增 generation server，工具名 `read_image` 等保持兼容不变）。
+
 ## v1.1.0
 
 - 默认视觉模型切换为通义千问 qwen3-vl-flash（DashScope 兼容模式），新增 `READ_IMAGE_PROVIDER=openai_compatible` + `READ_IMAGE_BASE_URL` + `READ_IMAGE_MODEL` 配置。

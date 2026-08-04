@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from read_image.errors import CapturePageError
-from read_image.mcp.capture_page_server import (
+from omnimodal.errors import CapturePageError
+from omnimodal.mcp.capture_page_server import (
     _max_full_page_height,
     _normalize_actions,
     _parse_viewport,

@@ -1,6 +1,8 @@
-# read-image v1.1.0
+# Omnimodal v2.0.0
 
-read-image gives text-only models vision support for local images, batches, videos, web pages, and Windows screenshots. It defaults to Qwen3-VL-Flash (DashScope compatible mode) and supports GLM and Doubao through OpenAI-compatible providers.
+> This project was formerly named read-image and has been upgraded to omnimodal (full multimodality).
+
+omnimodal gives text-only models vision support for local images, batches, videos, web pages, and Windows screenshots. It defaults to Qwen3-VL-Flash (DashScope compatible mode) and supports GLM and Doubao through OpenAI-compatible providers.
 
 [English](README.en.md) | [中文](README.md)
 
@@ -78,7 +80,7 @@ See `.env.example` for the full list.
 uv sync --extra dev
 uv run pytest
 uv run ruff check .
-uv run mypy read_image
+uv run mypy omnimodal
 ```
 
 ## Privacy and Terms

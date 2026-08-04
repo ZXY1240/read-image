@@ -8,12 +8,12 @@ from pathlib import Path
 import httpx
 import pytest
 
-from read_image import api
-from read_image.errors import ReadImageError
-from read_image.mcp import read_image_server
-from read_image.mcp.read_image_server import _batch_timeout_sec
-from read_image.profiles import profile_for_mode
-from read_image.providers import base as provider_base
+from omnimodal import api
+from omnimodal.errors import ReadImageError
+from omnimodal.mcp import read_image_server
+from omnimodal.mcp.read_image_server import _batch_timeout_sec
+from omnimodal.profiles import profile_for_mode
+from omnimodal.providers import base as provider_base
 
 pytestmark = pytest.mark.usefixtures("fake_api_key")
 
@@ -221,7 +221,7 @@ def test_read_clipboard_image_reports_missing_image(
 def test_read_clipboard_image_reports_non_windows(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("read_image.mcp.read_image_server.os.name", "posix")
+    monkeypatch.setattr("omnimodal.mcp.read_image_server.os.name", "posix")
     with pytest.raises(ReadImageError) as exc_info:
         read_image_server.read_clipboard_image("task", "quick")
     assert "仅支持 Windows" in str(exc_info.value)

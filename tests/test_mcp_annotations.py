@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import asyncio
 
-from read_image.mcp.capture_page_server import mcp as capture_page_mcp
-from read_image.mcp.read_image_server import mcp as read_image_mcp
-from read_image.mcp.windows_capture_server import mcp as windows_capture_mcp
+from omnimodal.mcp.capture_page_server import mcp as capture_page_mcp
+from omnimodal.mcp.read_image_server import mcp as read_image_mcp
+from omnimodal.mcp.windows_capture_server import mcp as windows_capture_mcp
 
 
 def _collect_annotations(mcp_servers: list[object]) -> dict[str, tuple[bool, bool, bool]]:

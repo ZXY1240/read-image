@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from read_image.mcp.windows_capture_server import capture_windows, list_windows
+from omnimodal.mcp.windows_capture_server import capture_windows, list_windows
 
 
 @pytest.mark.skipif(

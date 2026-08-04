@@ -10,11 +10,18 @@ import httpx
 import pytest
 from PIL import Image
 
-from read_image import api
-from read_image.config import DEFAULT_IMAGE_FORMAT, DEFAULT_MAX_DIMENSION, image_format
-from read_image.errors import ReadImageError, VisionMediaError
-from read_image.media import (
+from omnimodal import api
+from omnimodal.config import DEFAULT_IMAGE_FORMAT, DEFAULT_MAX_DIMENSION, image_format
+from omnimodal.errors import ReadImageError, VisionMediaError
+from omnimodal.media import (
     MAX_VIDEO_CONVERSION_DEPTH,
+    prepare_image,
+    prepare_image_variants,
+    video_base64_max_bytes,
+    video_download_max_bytes,
+    video_max_bytes,
+)
+from omnimodal.video_processing import (
     _analyze_local_video,
     _analyze_local_video_files,
     _analyze_remote_video,
@@ -25,11 +32,6 @@ from read_image.media import (
     _remote_size,
     _video_mime,
     _video_too_large_error,
-    prepare_image,
-    prepare_image_variants,
-    video_base64_max_bytes,
-    video_download_max_bytes,
-    video_max_bytes,
 )
 
 pytestmark = pytest.mark.usefixtures("fake_api_key")
@@ -44,8 +46,12 @@ def _mock_http_client(monkeypatch: pytest.MonkeyPatch, handler: Any) -> httpx.Cl
 def _mock_video_api(monkeypatch: pytest.MonkeyPatch, handler: Any) -> httpx.Client:
     client = httpx.Client(transport=httpx.MockTransport(handler))
     monkeypatch.setattr(api, "http_client", client)
+    # 视频 files API 是豆包语义，测试不依赖本机 .env 的 provider 配置
+    monkeypatch.delenv("READ_IMAGE_PROVIDER", raising=False)
+    monkeypatch.delenv("READ_IMAGE_BASE_URL", raising=False)
+    monkeypatch.delenv("READ_IMAGE_MODEL", raising=False)
     monkeypatch.setattr(api, "default_client", api.VisionClient(client=client))
-    monkeypatch.setattr("read_image.video_processing.validate_remote_url", lambda url: url)
+    monkeypatch.setattr("omnimodal.video_processing.validate_remote_url", lambda url: url)
     return client
 
 
@@ -212,7 +218,7 @@ def test_prepare_image_reports_locked_file_as_permission_error(
     def deny(*args: object, **kwargs: object) -> tuple[Image.Image, str, bool]:
         raise PermissionError("file is locked")
 
-    monkeypatch.setattr("read_image.image_processing._decode_image_bytes", deny)
+    monkeypatch.setattr("omnimodal.image_processing._decode_image_bytes", deny)
     with pytest.raises(ReadImageError) as exc_info:
         prepare_image(str(path))
     assert "被占用或无权限" in str(exc_info.value)
@@ -270,7 +276,7 @@ def test_compress_video_to_limit_never_writes_over_input(
         outputs.append((input_path_arg, output_path))
         output_path.write_bytes(b"compressed")
 
-    monkeypatch.setattr("read_image.video_processing._transcode_video", fake_transcode)
+    monkeypatch.setattr("omnimodal.video_processing._transcode_video", fake_transcode)
     result = _compress_video_to_limit(input_path, tmp_path, max_bytes=1024)
     assert result != input_path
     assert outputs[0][0] == input_path
@@ -616,7 +622,7 @@ def test_local_video_media_error_retries_converted_file_without_base64_fallback(
         converted.write_bytes(b"converted-video")
         return converted
 
-    monkeypatch.setattr("read_image.video_processing._convert_video_to_mp4", fake_convert)
+    monkeypatch.setattr("omnimodal.video_processing._convert_video_to_mp4", fake_convert)
 
     def handler(request: httpx.Request) -> httpx.Response:
         nonlocal upload_calls, chat_calls
@@ -683,7 +689,7 @@ def test_local_video_compresses_to_base64_cap_before_fallback(
         return compressed
 
     monkeypatch.setattr(
-        "read_image.video_processing._compress_video_to_limit",
+        "omnimodal.video_processing._compress_video_to_limit",
         fake_compress,
     )
 
@@ -725,7 +731,7 @@ def test_local_video_raises_friendly_error_when_base64_cap_cannot_fit(
         raise _video_too_large_error(video_base64_max_bytes())
 
     monkeypatch.setattr(
-        "read_image.video_processing._compress_video_to_limit",
+        "omnimodal.video_processing._compress_video_to_limit",
         fake_compress,
     )
 

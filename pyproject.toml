@@ -3,8 +3,8 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "read-image-plugin"
-version = "1.1.0"
+name = "omnimodal"
+version = "2.0.0"
 description = "Codex plugin that gives text-only models Doubao vision support for images, video, web pages, and Windows screenshots."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -28,15 +28,16 @@ dev = [
 ]
 
 [project.scripts]
-read-image-vision = "read_image.mcp.read_image_server:main"
-read-image-capture-page = "read_image.mcp.capture_page_server:main"
-read-image-windows-capture = "read_image.mcp.windows_capture_server:main"
+read-image-vision = "omnimodal.mcp.read_image_server:main"
+read-image-capture-page = "omnimodal.mcp.capture_page_server:main"
+read-image-windows-capture = "omnimodal.mcp.windows_capture_server:main"
+read-image-generation = "omnimodal.mcp.generation_server:main"
 
 [tool.setuptools.packages.find]
-include = ["read_image*"]
+include = ["omnimodal*"]
 
 [tool.setuptools.package-data]
-"read_image.assets.windows" = ["*.ps1"]
+"omnimodal.assets.windows" = ["*.ps1"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -52,4 +53,4 @@ select = ["E", "F", "I", "B", "UP"]
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true
-packages = ["read_image"]
+packages = ["omnimodal"]

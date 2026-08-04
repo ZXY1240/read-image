@@ -1,5 +1,5 @@
 param(
-    [string]$Target = (Join-Path $HOME ".claude\skills\read-image")
+    [string]$Target = (Join-Path $HOME ".claude\skills\omnimodal")
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,6 +33,6 @@ elseif (Test-Path -LiteralPath $envBackup) {
     Copy-Item -LiteralPath $envBackup -Destination $targetEnv -Force
 }
 
-Write-Output "Installed read-image plugin to: $target"
+Write-Output "Installed omnimodal plugin to: $target"
 Write-Output "Please close Claude Code before running this script for upgrades."
 Write-Output "Restart Claude Code to load the plugin."

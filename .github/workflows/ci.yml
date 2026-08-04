@@ -26,7 +26,7 @@ jobs:
       - name: Format check
         run: uv run ruff format --check .
       - name: Type check
-        run: uv run mypy read_image
+        run: uv run mypy omnimodal
       - name: Test
         env:
           RUN_BROWSER_INTEGRATION: "1"
@@ -50,7 +50,7 @@ jobs:
       - name: PowerShell syntax check
         shell: pwsh
         run: |
-          $scripts = Get-ChildItem read_image/assets/windows/*.ps1
+          $scripts = Get-ChildItem omnimodal/assets/windows/*.ps1
           foreach ($script in $scripts) {
             [scriptblock]::Create((Get-Content $script.FullName -Raw)) | Out-Null
           }

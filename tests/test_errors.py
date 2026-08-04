@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from read_image.errors import (
+from omnimodal.errors import (
     MEDIA_ERROR_CODES,
     MEDIA_MARKERS,
     CapturePageError,

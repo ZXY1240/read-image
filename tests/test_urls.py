@@ -7,10 +7,10 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import httpx
 import pytest
 
-from read_image import http
-from read_image.errors import ReadImageError
-from read_image.http import SafeHTTPTransport
-from read_image.urls import validate_remote_url
+from omnimodal import http
+from omnimodal.errors import ReadImageError
+from omnimodal.http import SafeHTTPTransport
+from omnimodal.urls import validate_remote_url
 
 
 def test_allows_public_http_url() -> None:
@@ -52,7 +52,7 @@ def test_blocks_hostname_resolving_to_private_ip(
             )
         ]
 
-    monkeypatch.setattr("read_image.urls.socket.getaddrinfo", fake_getaddrinfo)
+    monkeypatch.setattr("omnimodal.urls.socket.getaddrinfo", fake_getaddrinfo)
     with pytest.raises(ReadImageError):
         validate_remote_url("http://private.example.test/")
 

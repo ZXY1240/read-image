@@ -8,9 +8,9 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from read_image import drag
-from read_image.errors import ReadImageError
-from read_image.mcp import read_image_server
+from omnimodal import drag
+from omnimodal.errors import ReadImageError
+from omnimodal.mcp import read_image_server
 
 
 def _png_bytes(size: tuple[int, int] = (20, 10)) -> bytes:

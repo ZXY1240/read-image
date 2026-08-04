@@ -66,7 +66,7 @@ def main() -> int:
     output.mkdir(parents=True, exist_ok=True)
     shutil.copytree(source, output, dirs_exist_ok=True, ignore=IGNORE_PATTERNS)
 
-    config_path = output / "read_image" / "config.py"
+    config_path = output / "omnimodal" / "config.py"
     if config_path.is_file() and "HARDCODED_API_KEY" in config_path.read_text(encoding="utf-8"):
         print(
             "ERROR: public config.py must not contain HARDCODED_API_KEY",

@@ -38,7 +38,7 @@ def _iter_text_files(root: Path):
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate read-image plugin layout.")
+    parser = argparse.ArgumentParser(description="Validate omnimodal plugin layout.")
     parser.add_argument("--root", default=None, help="Plugin repository root.")
     parser.add_argument(
         "--public",
@@ -56,8 +56,8 @@ def main() -> int:
     else:
         try:
             plugin = json.loads(plugin_json.read_text(encoding="utf-8"))
-            if plugin.get("name") != "read-image":
-                errors.append("plugin.json name must be read-image")
+            if plugin.get("name") != "omnimodal":
+                errors.append("plugin.json name must be omnimodal")
             skills = plugin.get("skills")
             if not skills:
                 errors.append("plugin.json missing skills")
@@ -115,10 +115,10 @@ def main() -> int:
 
     if not (root / "pyproject.toml").is_file():
         errors.append("Missing pyproject.toml")
-    if not (root / "read_image" / "mcp" / "read_image_server.py").is_file():
-        errors.append("Missing read_image.mcp.read_image_server")
+    if not (root / "omnimodal" / "mcp" / "read_image_server.py").is_file():
+        errors.append("Missing omnimodal.mcp.read_image_server")
     else:
-        read_image_server_source = (root / "read_image" / "mcp" / "read_image_server.py").read_text(
+        read_image_server_source = (root / "omnimodal" / "mcp" / "read_image_server.py").read_text(
             encoding="utf-8"
         )
         if "def read_clipboard_image" not in read_image_server_source:
@@ -129,12 +129,12 @@ def main() -> int:
             errors.append("read_image_server.py must define read_dragged_video")
         if '"--clipboard"' not in read_image_server_source:
             errors.append("read_image_server.py must expose --clipboard CLI flag")
-    if not (root / "read_image" / "providers" / "factory.py").is_file():
-        errors.append("Missing read_image.providers.factory")
-    if not (root / "read_image" / "drag.py").is_file():
-        errors.append("Missing read_image.drag")
-    if not (root / "skills" / "read-image" / "SKILL.md").is_file():
-        errors.append("Missing skills/read-image/SKILL.md")
+    if not (root / "omnimodal" / "providers" / "factory.py").is_file():
+        errors.append("Missing omnimodal.providers.factory")
+    if not (root / "omnimodal" / "drag.py").is_file():
+        errors.append("Missing omnimodal.drag")
+    if not (root / "skills" / "omnimodal" / "SKILL.md").is_file():
+        errors.append("Missing skills/omnimodal/SKILL.md")
     if not (root / "CLAUDE.md").is_file():
         errors.append("Missing CLAUDE.md")
     if not (root / ".claude-mcp.json").is_file():
@@ -146,8 +146,8 @@ def main() -> int:
     else:
         try:
             claude_plugin = json.loads(claude_plugin_path.read_text(encoding="utf-8"))
-            if claude_plugin.get("name") != "read-image":
-                errors.append(".claude-plugin/plugin.json name must be read-image")
+            if claude_plugin.get("name") != "omnimodal":
+                errors.append(".claude-plugin/plugin.json name must be omnimodal")
             if claude_plugin.get("mcpServers") != "./.claude-mcp.json":
                 errors.append(
                     ".claude-plugin/plugin.json mcpServers must point to ./.claude-mcp.json"
@@ -191,7 +191,7 @@ def main() -> int:
         errors.append("Missing README.en.md")
 
     versions: list[str] = []
-    init_path = root / "read_image" / "__init__.py"
+    init_path = root / "omnimodal" / "__init__.py"
     if init_path.is_file():
         version = _python_version(init_path.read_text(encoding="utf-8"))
         if version:
@@ -220,11 +220,11 @@ def main() -> int:
     if len(set(versions)) != 1:
         errors.append(f"Version mismatch across package metadata: {versions}")
 
-    config_path = root / "read_image" / "config.py"
+    config_path = root / "omnimodal" / "config.py"
     if config_path.is_file():
         config_text = config_path.read_text(encoding="utf-8")
         if "HARDCODED_API_KEY" in config_text:
-            errors.append("read_image/config.py must not contain HARDCODED_API_KEY")
+            errors.append("omnimodal/config.py must not contain HARDCODED_API_KEY")
 
     gitignore_path = root / ".gitignore"
     if gitignore_path.is_file():

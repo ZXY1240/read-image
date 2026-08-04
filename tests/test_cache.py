@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from read_image import cache
-from read_image.cache import ImageCache, image_cache_key
+from omnimodal import cache
+from omnimodal.cache import ImageCache, image_cache_key
 
 
 def test_image_cache_key_changes_with_inputs() -> None:

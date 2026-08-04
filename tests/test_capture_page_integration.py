@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from read_image.mcp.capture_page_server import _capture_page
+from omnimodal.mcp.capture_page_server import _capture_page
 
 
 @pytest.mark.skipif(

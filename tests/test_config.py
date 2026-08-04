@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from read_image.config import (
+from omnimodal.config import (
     DEFAULT_VIDEO_BASE64_MAX_MB,
     DEFAULT_VIDEO_DOWNLOAD_MAX_MB,
     DEFAULT_VIDEO_FILES_API_TIMEOUT_SEC,

@@ -35,6 +35,18 @@
       "env": {
         "READ_IMAGE_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
       }
+    },
+    "generation": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "read-image-generation"
+      ],
+      "env": {
+        "READ_IMAGE_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
+      }
     }
   }
 }

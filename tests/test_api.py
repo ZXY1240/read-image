@@ -8,16 +8,16 @@ from typing import Any
 import httpx
 import pytest
 
-from read_image import api, http
-from read_image.config import DEFAULT_MODEL
-from read_image.errors import (
+from omnimodal import api, http
+from omnimodal.config import DEFAULT_MODEL
+from omnimodal.errors import (
     ReadImageError,
     VisionMediaError,
     VisionRateLimitError,
     VisionTimeoutError,
 )
-from read_image.providers import base as provider_base
-from read_image.providers import doubao as provider_doubao
+from omnimodal.providers import base as provider_base
+from omnimodal.providers import doubao as provider_doubao
 
 pytestmark = pytest.mark.usefixtures("fake_api_key")
 

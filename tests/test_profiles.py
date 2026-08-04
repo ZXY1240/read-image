@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from read_image.errors import ReadImageError
-from read_image.profiles import (
+from omnimodal.errors import ReadImageError
+from omnimodal.profiles import (
     normalize_mode,
     profile_for_mode,
     video_prompt_for_mode,

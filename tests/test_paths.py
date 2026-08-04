@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from read_image.errors import ReadImageError
-from read_image.paths import ensure_allowed_output_dir
+from omnimodal.errors import ReadImageError
+from omnimodal.paths import ensure_allowed_output_dir
 
 
 def test_allows_temp_and_workspace_dirs() -> None:

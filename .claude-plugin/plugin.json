@@ -1,17 +1,21 @@
 {
-  "name": "read-image",
-  "version": "1.0.0",
-  "description": "Give Claude Code vision for images, videos, web pages, and Windows screenshots through Doubao, GLM, or Qwen-compatible APIs.",
+  "name": "omnimodal",
+  "version": "2.0.0",
+  "description": "Multimodal plugin for Claude Code: recognize audio, images, and video through Doubao, GLM, or Qwen-compatible APIs, plus image, video, and speech generation.",
   "author": {
     "name": "ZXY1240",
     "url": "https://github.com/ZXY1240"
   },
-  "repository": "https://github.com/ZXY1240/read-image",
+  "repository": "https://github.com/good-boy4069/Deepseek-omnimodal",
   "license": "MIT",
   "keywords": [
     "vision",
+    "audio",
+    "generation",
+    "wanx",
+    "tts",
+    "omnimodal",
     "mcp",
-    "read-image",
     "doubao",
     "glm",
     "qwen"

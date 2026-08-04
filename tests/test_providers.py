@@ -6,10 +6,10 @@ from typing import Any
 import httpx
 import pytest
 
-from read_image.errors import ReadImageError
-from read_image.providers.doubao import DoubaoProvider
-from read_image.providers.factory import create_provider
-from read_image.providers.openai_compatible import OpenAICompatibleProvider
+from omnimodal.errors import ReadImageError
+from omnimodal.providers.doubao import DoubaoProvider
+from omnimodal.providers.factory import create_provider
+from omnimodal.providers.openai_compatible import OpenAICompatibleProvider
 
 pytestmark = pytest.mark.usefixtures("fake_api_key")
 

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import argparse
 
-from read_image.errors import ReadImageError
-from read_image.mcp.common import run_cli
+from omnimodal.errors import ReadImageError
+from omnimodal.mcp.common import run_cli
 
 
 def test_run_cli_returns_handler_result() -> None:
