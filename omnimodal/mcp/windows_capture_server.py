@@ -21,8 +21,8 @@ from omnimodal.logging import configure_logging
 from omnimodal.mcp.common import LOCAL_WRITE_ANNOTATIONS, READ_ONLY_ANNOTATIONS, run_cli
 from omnimodal.paths import ensure_allowed_output_dir
 
-mcp = FastMCP("windows-capture")
-logger = configure_logging("windows-capture")
+mcp = FastMCP("omnimodal-windows-capture")
+logger = configure_logging("omnimodal-windows-capture")
 WINDOWS_CAPTURE_TIMEOUT_SEC = 90
 
 
@@ -38,8 +38,8 @@ def _require_windows() -> None:
     if os.name != "nt":
         raise WindowsCaptureError(
             tr(
-                "capture_windows 仅支持 Windows 系统。",
-                "capture_windows is only supported on Windows.",
+                "omnimodal_capture_windows 仅支持 Windows 系统。",
+                "omnimodal_capture_windows is only supported on Windows.",
             )
         )
 
@@ -80,8 +80,8 @@ def _run_powershell(
         if "window not found" in detail.lower():
             raise WindowsCaptureError(
                 tr(
-                    "找不到匹配窗口，请先用 list_windows 确认窗口标题。",
-                    "No matching window found. Use list_windows first.",
+                    "找不到匹配窗口，请先用 omnimodal_list_windows 确认窗口标题。",
+                    "No matching window found. Use omnimodal_list_windows first.",
                 )
             )
         raise WindowsCaptureError(
@@ -109,9 +109,9 @@ def _clean_powershell_error(raw: str) -> str:
 
 
 def _default_capture_dir() -> Path:
-    configured = os.environ.get("WINDOWS_CAPTURE_DIR", "").strip()
+    configured = os.environ.get("OMNIMODAL_WINDOWS_CAPTURE_DIR", "").strip()
     if configured:
-        # WINDOWS_CAPTURE_DIR 是用户显式配置的输出目录，但仍走统一沙箱校验
+        # OMNIMODAL_WINDOWS_CAPTURE_DIR 是用户显式配置的输出目录，但仍走统一沙箱校验
         # （以自身作为额外允许根目录，防止相对路径/异常解析问题）
         extra = [configured] if configured else []
         return ensure_allowed_output_dir(configured, extra_allowed_roots=extra)
@@ -137,8 +137,8 @@ def _safe_filename(value: str) -> str:
     return cleaned.strip("._") or "window"
 
 
-@mcp.tool(annotations=READ_ONLY_ANNOTATIONS)
-def list_windows() -> str:
+@mcp.tool(name="omnimodal_list_windows", annotations=READ_ONLY_ANNOTATIONS)
+def omnimodal_list_windows() -> str:
     """列出当前所有可见 Windows 窗口标题。"""
     _require_windows()
     output = _run_powershell(_LIST_WINDOWS_PS)
@@ -148,8 +148,8 @@ def list_windows() -> str:
     return "\n".join(f"{index}. {title}" for index, title in enumerate(titles, start=1))
 
 
-@mcp.tool(annotations=LOCAL_WRITE_ANNOTATIONS)
-def capture_windows(
+@mcp.tool(name="omnimodal_capture_windows", annotations=LOCAL_WRITE_ANNOTATIONS)
+def omnimodal_capture_windows(
     mode: Annotated[
         str,
         Field(
@@ -188,7 +188,7 @@ def capture_windows(
         try:
             extra_roots = [
                 configured
-                for configured in [os.environ.get("WINDOWS_CAPTURE_DIR", "")]
+                for configured in [os.environ.get("OMNIMODAL_WINDOWS_CAPTURE_DIR", "")]
                 if configured.strip()
             ]
             output_path = ensure_allowed_output_dir(
@@ -200,7 +200,7 @@ def capture_windows(
     else:
         output_path = _default_capture_dir()
         # 仅 mkdtemp 分支创建临时目录（WINDOWS_CAPTURE_DIR 是用户配置目录，不算泄漏）
-        if not os.environ.get("WINDOWS_CAPTURE_DIR", "").strip():
+        if not os.environ.get("OMNIMODAL_WINDOWS_CAPTURE_DIR", "").strip():
             temp_dir_created = output_path
 
     if normalized_mode == "window":
@@ -240,6 +240,11 @@ def capture_windows(
             _purge_stale_capture_dirs()
 
 
+# Internal CLI/test compatibility aliases; MCP tool names remain omnimodal_*.
+list_windows = omnimodal_list_windows
+capture_windows = omnimodal_capture_windows
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Capture native Windows screenshots.")
     parser.add_argument("--list-windows", action="store_true")
@@ -252,9 +257,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def _run_cli_handler(args: argparse.Namespace) -> int:
     if args.list_windows:
-        print(list_windows())
+        print(omnimodal_list_windows())
     elif args.capture:
-        print(capture_windows(args.mode, args.window, args.output_dir))
+        print(omnimodal_capture_windows(args.mode, args.window, args.output_dir))
     else:
         raise WindowsCaptureError(
             tr(

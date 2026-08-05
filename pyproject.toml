@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "omnimodal"
-version = "2.1.0"
-description = "Codex plugin that gives text-only models Doubao vision support for images, video, web pages, and Windows screenshots."
+version = "3.0.0"
+description = "Omnimodal plugin for text-only models: recognize and generate images, video, and audio through Qwen/DashScope."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -28,10 +28,10 @@ dev = [
 ]
 
 [project.scripts]
-read-image-vision = "omnimodal.mcp.read_image_server:main"
-read-image-capture-page = "omnimodal.mcp.capture_page_server:main"
-read-image-windows-capture = "omnimodal.mcp.windows_capture_server:main"
-read-image-generation = "omnimodal.mcp.generation_server:main"
+omnimodal-recognize = "omnimodal.mcp.read_image_server:main"
+omnimodal-generation = "omnimodal.mcp.generation_server:main"
+omnimodal-capture-page = "omnimodal.mcp.capture_page_server:main"
+omnimodal-windows-capture = "omnimodal.mcp.windows_capture_server:main"
 
 [tool.setuptools.packages.find]
 include = ["omnimodal*"]

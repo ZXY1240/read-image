@@ -2,16 +2,33 @@ from __future__ import annotations
 
 from typing import Any
 
-from omnimodal.config import ocr_model_name, openai_thinking_param
-from omnimodal.profiles import profile_for_mode, video_prompt_for_mode
+from omnimodal.config import (
+    audio_model,
+    image_model,
+    ocr_model_name,
+    openai_thinking_param,
+    video_model,
+)
+from omnimodal.profiles import module_prompt_for_mode, profile_for_mode
 from omnimodal.providers.base import VisionProvider
 
 
 class OpenAICompatibleProvider(VisionProvider):
-    """Generic OpenAI-compatible vision provider for GLM, Qwen, and similar APIs."""
+    """Qwen/DashScope OpenAI-compatible provider for image, video, and audio."""
 
-    provider_name = "openai_compatible"
+    provider_name = "qwen"
     supports_video_files = False
+
+    def _is_omni_model(self) -> bool:
+        model = self.model.lower()
+        return any(
+            marker in model
+            for marker in (
+                "qwen3.5-omni",
+                "qwen3-omni",
+                "qwen-omni",
+            )
+        )
 
     def _thinking_fields(self, enabled: bool, model: str | None = None) -> dict[str, Any]:
         style = openai_thinking_param()
@@ -35,13 +52,15 @@ class OpenAICompatibleProvider(VisionProvider):
         if file_id is not None:
             raise NotImplementedError("OpenAI-compatible providers do not use Files API.")
         profile = profile_for_mode(mode)
-        if kind == "video":
-            system_prompt = video_prompt_for_mode(profile.key)
+        system_prompt = module_prompt_for_mode("video" if kind == "video" else "image", mode)
+        if profile.key == "ocr" and kind != "video":
+            model = ocr_model_name()
+        elif kind == "audio":
+            model = self.model if self._is_omni_model() else audio_model()
+        elif kind == "video":
+            model = self.model if self._is_omni_model() else video_model()
         else:
-            system_prompt = profile.system_prompt
-        # mode=ocr 时用 OCR 专用模型（qwen-vl-ocr 0.3/0.5 元/M，比通用视觉便宜）；
-        # 视频不走 OCR 模型。
-        model = ocr_model_name() if (profile.key == "ocr" and kind != "video") else self.model
+            model = image_model()
         payload: dict[str, Any] = {
             "model": model,
             "messages": [
@@ -59,3 +78,28 @@ class OpenAICompatibleProvider(VisionProvider):
         if profile.max_tokens is not None:
             payload["max_tokens"] = profile.max_tokens
         return payload
+
+    def call_audio(
+        self,
+        audio_url: str,
+        task: str,
+        mode: str | None,
+        timeout_sec: int | None = None,
+    ) -> str:
+        if self._is_omni_model():
+            from omnimodal.audio_processing import analyze_audio
+
+            tier = "pro" if "plus" in self.model.lower() else "standard"
+            return analyze_audio(
+                audio_url,
+                task=task,
+                mode=mode,
+                tier=tier,
+                model=self.model,
+            )
+        return super().call_audio(
+            audio_url,
+            task,
+            mode,
+            timeout_sec=timeout_sec,
+        )

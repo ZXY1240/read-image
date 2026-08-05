@@ -15,6 +15,7 @@ worktrees/
 .env
 .env.*
 !.env.example
+config/local.json
 
 # Editor and OS noise
 .DS_Store

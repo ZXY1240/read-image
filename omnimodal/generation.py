@@ -19,14 +19,22 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from omnimodal.config import api_key, env_int
+from omnimodal.config import (
+    api_key,
+)
+from omnimodal.config import (
+    generation_timeout_sec as config_generation_timeout_sec,
+)
+from omnimodal.config import (
+    max_video_duration as config_max_video_duration,
+)
 from omnimodal.errors import ReadImageError, tr
 from omnimodal.http import http_client
 from omnimodal.urls import validate_remote_url
 
 DEFAULT_POLL_INTERVAL_SEC = 10
-DEFAULT_GENERATION_TIMEOUT_SEC = 300  # 5 min images, videos use video-specific
-DEFAULT_VIDEO_GENERATION_TIMEOUT_SEC = 900  # 15 min
+DEFAULT_GENERATION_TIMEOUT_SEC = 300
+DEFAULT_VIDEO_GENERATION_TIMEOUT_SEC = 900
 DEFAULT_MAX_VIDEO_DURATION = 15
 DEFAULT_POLL_RETRIES = 2
 
@@ -78,9 +86,11 @@ class GenerationClient:
         self,
         spec: GenerationSpec,
         output_dir: str | None = None,
+        extra_headers: dict[str, str] | None = None,
     ):
         self.spec = spec
         self.output_dir = Path(output_dir) if output_dir else None
+        self.extra_headers = dict(extra_headers or {})
 
     # ---- submit ----
     def submit(self, payload: dict[str, Any]) -> str:
@@ -88,7 +98,12 @@ class GenerationClient:
         try:
             response = http_client.post(
                 self.spec.endpoint,
-                headers=_auth_headers({"X-DashScope-Async": "enable"}),
+                headers=_auth_headers(
+                    {
+                        "X-DashScope-Async": "enable",
+                        **self.extra_headers,
+                    }
+                ),
                 json=payload,
                 timeout=60.0,
             )
@@ -115,11 +130,7 @@ class GenerationClient:
                     "Generation submit response is not JSON.",
                 )
             ) from exc
-        task_id = (
-            parsed.get("output", {}).get("task_id")
-            if isinstance(parsed, dict)
-            else None
-        )
+        task_id = parsed.get("output", {}).get("task_id") if isinstance(parsed, dict) else None
         if not isinstance(task_id, str) or not task_id:
             raise ReadImageError(
                 tr(
@@ -158,9 +169,7 @@ class GenerationClient:
                         "Failed to query task status (HTTP {code}).",
                     ).format(code=response.status_code)
                 )
-            last_error = ReadImageError(
-                f"poll HTTP {response.status_code}: {response.text[:200]}"
-            )
+            last_error = ReadImageError(f"poll HTTP {response.status_code}: {response.text[:200]}")
             time.sleep(1.0)
         raise ReadImageError(
             tr(
@@ -197,11 +206,16 @@ class GenerationClient:
             if status == "SUCCEEDED":
                 return data
             if status in {"FAILED", "CANCELED"}:
+                output = data.get("output", {}) if isinstance(data, dict) else {}
+                detail = output.get("message") or output.get("error") or ""
+                error_code = output.get("code") or output.get("error_code") or ""
+                suffix = f" {error_code}: {detail}" if error_code or detail else ""
                 raise ReadImageError(
                     tr(
                         f"生成任务{status}。",
                         f"Generation task {status}.",
                     )
+                    + suffix
                 )
             if status == "UNKNOWN":
                 raise ReadImageError(
@@ -258,25 +272,13 @@ class GenerationTimeoutError(ReadImageError):
 
 
 def generation_timeout_sec() -> int:
-    """Global timeout for generation tasks, configurable via env."""
-    return max(
-        1,
-        env_int("READ_IMAGE_GENERATION_TIMEOUT_SEC", DEFAULT_GENERATION_TIMEOUT_SEC),
-    )
+    """Global timeout for image/audio generation tasks."""
+    return config_generation_timeout_sec("image")
 
 
 def video_generation_timeout_sec() -> int:
-    return max(
-        1,
-        env_int(
-            "READ_VIDEO_GENERATION_TIMEOUT_SEC",
-            DEFAULT_VIDEO_GENERATION_TIMEOUT_SEC,
-        ),
-    )
+    return config_generation_timeout_sec("video")
 
 
 def max_video_duration() -> int:
-    return max(
-        1,
-        env_int("READ_IMAGE_MAX_VIDEO_DURATION", DEFAULT_MAX_VIDEO_DURATION),
-    )
+    return config_max_video_duration()

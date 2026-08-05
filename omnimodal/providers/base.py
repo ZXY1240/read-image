@@ -2,14 +2,19 @@ from __future__ import annotations
 
 import base64
 import json
-import os
 import time
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
-from omnimodal.config import MAX_RATE_LIMIT_RETRIES, MAX_TIMEOUT_RETRIES, api_key, env_int
+from omnimodal.config import (
+    MAX_RATE_LIMIT_RETRIES,
+    MAX_TIMEOUT_RETRIES,
+    api_key,
+)
 from omnimodal.errors import (
     ReadImageError,
     VisionNetworkError,
@@ -18,7 +23,12 @@ from omnimodal.errors import (
     tr,
 )
 from omnimodal.http import _extract_error_metadata, _raise_api_error, _retry_delay, http_client
-from omnimodal.profiles import profile_for_mode, video_timeout_for_mode
+from omnimodal.profiles import (
+    audio_timeout_for_mode,
+    image_timeout_for_mode,
+    profile_for_mode,
+    video_timeout_for_mode,
+)
 
 
 class VisionProvider(ABC):
@@ -67,12 +77,10 @@ class VisionProvider(ABC):
         profile = profile_for_mode(mode)
         if kind == "video":
             timeout = video_timeout_for_mode(profile.key)
-            if os.environ.get("READ_VIDEO_TIMEOUT_SEC", "").strip():
-                timeout = max(1, env_int("READ_VIDEO_TIMEOUT_SEC", timeout))
+        elif kind == "audio":
+            timeout = audio_timeout_for_mode(profile.key)
         else:
-            timeout = profile.timeout_sec
-            if os.environ.get("READ_IMAGE_TIMEOUT_SEC", "").strip():
-                timeout = max(1, env_int("READ_IMAGE_TIMEOUT_SEC", timeout))
+            timeout = image_timeout_for_mode(profile.key)
         return timeout
 
     def _content_item(
@@ -90,6 +98,21 @@ class VisionProvider(ABC):
                 "type": "video_url",
                 "video_url": video_url,
             }
+        if kind == "audio":
+            if content_url.startswith("data:"):
+                mime = content_url[len("data:") :].split(";", 1)[0].lower().strip()
+                format_name = _audio_format(mime, content_url)
+                return {
+                    "type": "input_audio",
+                    "input_audio": {"data": content_url, "format": format_name},
+                }
+            return {
+                "type": "input_audio",
+                "input_audio": {
+                    "data": content_url,
+                    "format": _audio_format(None, content_url),
+                },
+            }
         return {
             "type": "image_url",
             "image_url": {"url": content_url},
@@ -100,14 +123,18 @@ class VisionProvider(ABC):
         payload: dict[str, Any],
         timeout_sec: int,
         kind: str,
+        oss_resource: bool = False,
     ) -> str:
+        headers: dict[str, str] = {
+            "Authorization": f"Bearer {api_key()}",
+            "Content-Type": "application/json",
+        }
+        if oss_resource:
+            headers["X-DashScope-OssResourceResolve"] = "enable"
         try:
             response = self._client.post(
                 f"{self.base_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key()}",
-                    "Content-Type": "application/json",
-                },
+                headers=headers,
                 json=payload,
                 timeout=timeout_sec,
             )
@@ -213,6 +240,7 @@ class VisionProvider(ABC):
                     ),
                     self._timeout_sec(mode, kind, timeout_sec),
                     kind,
+                    oss_resource=content_url.startswith("oss://"),
                 )
                 return result
             except VisionRateLimitError as exc:
@@ -260,6 +288,21 @@ class VisionProvider(ABC):
             file_id=file_id,
         )
 
+    def call_audio(
+        self,
+        audio_url: str,
+        task: str,
+        mode: str | None,
+        timeout_sec: int | None = None,
+    ) -> str:
+        return self.call_with_retries(
+            "audio",
+            audio_url,
+            task,
+            mode,
+            timeout_sec=timeout_sec,
+        )
+
     def upload_video_file(self, path: str, timeout_sec: int | None = None) -> str:
         raise ReadImageError(
             tr(
@@ -275,3 +318,24 @@ class VisionProvider(ABC):
         retries: int = 2,
     ) -> bool:
         return True
+
+
+def _audio_format(mime: str | None, path_or_url: str) -> str:
+    known = {
+        "audio/mpeg": "mp3",
+        "audio/wav": "wav",
+        "audio/ogg": "ogg",
+        "audio/mp4": "m4a",
+        "audio/aac": "aac",
+        "audio/flac": "flac",
+        "audio/amr": "amr",
+        "audio/x-ms-wma": "wma",
+    }
+    if mime:
+        normalized = mime.lower().strip()
+        if normalized in known:
+            return known[normalized]
+    suffix = Path(urlparse(path_or_url).path).suffix.lower().lstrip(".")
+    if suffix in {"mp3", "wav", "ogg", "oga", "m4a", "aac", "flac", "amr", "wma"}:
+        return suffix
+    return "mp3"

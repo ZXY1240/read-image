@@ -111,7 +111,7 @@ MEDIA_MARKERS: tuple[str, ...] = MEDIA_MARKERS_EN + MEDIA_MARKERS_ZH
 
 
 def language() -> str:
-    return os.environ.get("READ_IMAGE_LANGUAGE", "zh").strip().lower() or "zh"
+    return os.environ.get("OMNIMODAL_LANGUAGE", "zh").strip().lower() or "zh"
 
 
 def tr(zh: str, en: str) -> str:
@@ -206,9 +206,9 @@ def _matches_media_markers(text: str) -> bool:
     positives such as "video file" matching "video files"; Chinese markers
     have no word-boundary concept and fall back to substring matching.
     """
-    return any(
-        re.search(rf"\b{re.escape(marker)}\b", text) for marker in MEDIA_MARKERS_EN
-    ) or any(marker in text for marker in MEDIA_MARKERS_ZH)
+    return any(re.search(rf"\b{re.escape(marker)}\b", text) for marker in MEDIA_MARKERS_EN) or any(
+        marker in text for marker in MEDIA_MARKERS_ZH
+    )
 
 
 def is_media_error(

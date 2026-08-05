@@ -10,7 +10,6 @@ import imageio_ffmpeg
 
 from omnimodal import api
 from omnimodal.config import (
-    DEFAULT_VIDEO_MAX_MB,
     env_int,
     video_base64_max_bytes,
     video_download_max_bytes,
@@ -234,7 +233,7 @@ def _is_file_id_rejection(exc: Exception) -> bool:
 
 
 def video_max_bytes() -> int:
-    max_mb = max(1, env_int("READ_VIDEO_MAX_MB", DEFAULT_VIDEO_MAX_MB))
+    max_mb = max(1, env_int("OMNIMODAL_VIDEO_MAX_MB", 50))
     return max_mb * 1024 * 1024
 
 
@@ -424,7 +423,7 @@ def analyze_video(video: str, task: str, mode: str | None) -> str:
     if not raw:
         raise ReadImageError(tr("video 参数为空。", "video argument is empty."))
 
-    with tempfile.TemporaryDirectory(prefix="read-image-video-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="omnimodal-video-") as tmp:
         tmp_dir = Path(tmp)
         if raw.lower().startswith(("http://", "https://")):
             return _analyze_remote_video(raw, task, mode, tmp_dir)

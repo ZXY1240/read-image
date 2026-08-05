@@ -1,5 +1,18 @@
 # Changelog
 
+## v3.0.0
+
+- 项目正式升级为 Omnimodal 3.0.0：工具名全部改为 `omnimodal_*`，环境变量全部改为 `OMNIMODAL_*`。
+- 删除豆包和 GLM Provider，只保留千问/阿里 DashScope API。
+- 新增/完善音频识别：短音频理解、长音频 ASR 自动转写、批量音频和拖拽音频。
+- 新增/完善图片、视频、音频生成：文生图、图生图、图片编辑、文生视频、图生视频、视频编辑、TTS、声音克隆、声音设计、音乐生成。
+- 生成工具强制 `confirm=true` 费用确认；异步任务统一返回 `task_id` 并可用 `omnimodal_get_task_result` 查询。
+- 配置迁移到插件目录 `config/model_catalog.json`、`config/profiles.json`，本机覆盖使用被 Git 忽略的 `config/local.json`。
+- 更新 Codex、Claude Code MCP 配置、CLI 命令、安装脚本、文档和公开版密钥扫描。
+- 视频生成按官方接口修正：分辨率仅支持 `720P/1080P`，`480P` 自动升级；图生视频使用 `media.first_frame`，视频编辑新增 `omnimodal_edit_video`，本地媒体上传自动带 OSS 资源解析头。
+- 音频生成按官方接口修正：新增 Qwen 声音克隆、声音设计和 CosyVoice 自定义音色流程；`fun-music-v1` 为阿里云邀测接口，未开通时返回 `AccessDenied`。
+- 增加真实 API 探针汇总 `test-results/probe-summary.json`，覆盖识别、ASR、图片生成/编辑、TTS、声音克隆/设计和视频生成/编辑模型。
+
 ## v2.1.0
 
 - 修复第二份锐评（v2.0.0 评审）P0+P1 问题：

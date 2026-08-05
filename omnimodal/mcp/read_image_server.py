@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import os
 import subprocess
 import sys
@@ -15,9 +16,10 @@ from typing import Annotated
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
 
-from omnimodal import api
+from omnimodal import api, audio_processing
 from omnimodal.cache import ImageCache, image_cache_key
 from omnimodal.config import (
+    DEFAULT_AUDIO_TASK,
     DEFAULT_BATCH_TASK,
     DEFAULT_BATCH_WORKERS,
     DEFAULT_MODE,
@@ -37,8 +39,8 @@ from omnimodal.media import analyze_video, prepare_image_variants
 from omnimodal.profiles import profile_for_mode
 from omnimodal.workers import run_video_task
 
-mcp = FastMCP("read-image")
-logger = configure_logging("read-image-vision")
+mcp = FastMCP("omnimodal-recognize")
+logger = configure_logging("omnimodal-recognize")
 _image_cache = ImageCache(cache_max_entries(), ttl_sec=cache_ttl_sec())
 BATCH_TIMEOUT_BUFFER_SEC = 30
 CLIPBOARD_SAVE_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "save_clipboard_image.ps1"
@@ -123,8 +125,8 @@ def read_image(
     return _format_slice_results(results)
 
 
-@mcp.tool(name="read_image", annotations=EXTERNAL_SEND_ANNOTATIONS)
-async def _read_image_tool(
+@mcp.tool(name="omnimodal_recognize_image", annotations=EXTERNAL_SEND_ANNOTATIONS)
+async def _omnimodal_recognize_image_tool(
     image: Annotated[
         str,
         Field(description="本地图片路径、data URL 或 base64 图片数据。"),
@@ -144,7 +146,7 @@ async def _read_image_tool(
     ] = DEFAULT_MODE,
     ctx: Context = None,  # type: ignore[assignment]
 ) -> str:
-    """读取本地图片、data URL 或 base64 图片，并按 task 和 mode 调用视觉模型。"""
+    """识别本地图片、data URL 或 base64 图片，并按 task 和 mode 调用视觉模型。"""
     effective_task = task.strip() if task and task.strip() else DEFAULT_TASK
     profile_for_mode(mode)
     variants = prepare_image_variants(image)
@@ -253,8 +255,8 @@ def read_clipboard_image(
     return read_image(str(saved_path), effective_task, mode)
 
 
-@mcp.tool(name="read_clipboard_image", annotations=EXTERNAL_SEND_ANNOTATIONS)
-async def _read_clipboard_image_tool(
+@mcp.tool(name="omnimodal_read_clipboard_image", annotations=EXTERNAL_SEND_ANNOTATIONS)
+async def _omnimodal_read_clipboard_image_tool(
     task: Annotated[
         str,
         Field(description="本次要从剪贴板图片中提取或分析的具体内容。"),
@@ -270,7 +272,7 @@ async def _read_clipboard_image_tool(
     ] = DEFAULT_MODE,
     ctx: Context = None,  # type: ignore[assignment]
 ) -> str:
-    """保存并读取 Windows 剪贴板图片，直接返回视觉模型结果。"""
+    """保存并读取 Windows 剪贴板图片，直接返回识别结果。"""
     await ctx.report_progress(0, 1, tr("正在读取剪贴板图片…", "Reading clipboard image..."))
     result = read_clipboard_image(task, mode)
     await ctx.report_progress(
@@ -319,8 +321,8 @@ def read_dragged_image(
     return _format_drag_candidates("图片", candidates)
 
 
-@mcp.tool(name="read_dragged_image", annotations=EXTERNAL_SEND_ANNOTATIONS)
-async def _read_dragged_image_tool(
+@mcp.tool(name="omnimodal_read_dragged_image", annotations=EXTERNAL_SEND_ANNOTATIONS)
+async def _omnimodal_read_dragged_image_tool(
     task: Annotated[
         str,
         Field(description="本次要从拖拽图片中提取或分析的具体内容。"),
@@ -379,8 +381,8 @@ def read_dragged_video(
     return _format_drag_candidates("视频", candidates)
 
 
-@mcp.tool(name="read_dragged_video", annotations=EXTERNAL_SEND_ANNOTATIONS)
-async def _read_dragged_video_tool(
+@mcp.tool(name="omnimodal_read_dragged_video", annotations=EXTERNAL_SEND_ANNOTATIONS)
+async def _omnimodal_read_dragged_video_tool(
     task: Annotated[
         str,
         Field(description="本次要从拖拽视频中提取或分析的具体内容。"),
@@ -422,8 +424,120 @@ def read_video(
     return run_video_task(analyze_video, video, effective_task, mode)
 
 
-@mcp.tool(name="read_video", annotations=EXTERNAL_SEND_ANNOTATIONS)
-async def _read_video_tool(
+def _format_audio_result(result: str | dict[str, object]) -> str:
+    if isinstance(result, str):
+        return result
+    text = result.get("text")
+    if isinstance(text, str) and text:
+        return text
+    return json.dumps(result, ensure_ascii=False)
+
+
+def read_audio(
+    audio: str,
+    task: str = DEFAULT_AUDIO_TASK,
+    mode: str = DEFAULT_MODE,
+    tier: str = "standard",
+) -> str:
+    """读取本地音频或音频 URL（同步实现，供 CLI 与内部调用）。"""
+    effective_task = task.strip() if task and task.strip() else DEFAULT_AUDIO_TASK
+    profile_for_mode(mode)
+    return _format_audio_result(
+        audio_processing.recognize_audio(
+            audio,
+            task=effective_task,
+            mode=mode,
+            tier=tier,
+        )
+    )
+
+
+@mcp.tool(name="omnimodal_recognize_audio", annotations=EXTERNAL_SEND_ANNOTATIONS)
+async def _omnimodal_recognize_audio_tool(
+    audio: Annotated[
+        str,
+        Field(description="本地音频文件绝对路径，或 http(s) 音频 URL。"),
+    ],
+    task: Annotated[
+        str,
+        Field(description="本次要从音频中提取或分析的具体内容。"),
+    ] = DEFAULT_AUDIO_TASK,
+    mode: Annotated[
+        str,
+        Field(
+            description=(
+                "识别档位：quick/standard/full/quick_analysis/balanced_analysis/"
+                "deep_analysis，默认 standard。"
+            )
+        ),
+    ] = DEFAULT_MODE,
+    ctx: Context = None,  # type: ignore[assignment]
+) -> str:
+    """识别本地音频或音频 URL；长音频自动走语音转写。"""
+    effective_task = task.strip() if task and task.strip() else DEFAULT_AUDIO_TASK
+    profile_for_mode(mode)
+    await ctx.report_progress(0, 100, tr("正在分析音频…", "Analyzing audio..."))
+    result = read_audio(audio, effective_task, mode)
+    await ctx.report_progress(100, 100, tr("音频识别完成。", "Audio recognition complete."))
+    return result
+
+
+def read_dragged_audio(
+    task: str = DEFAULT_AUDIO_TASK,
+    mode: str = DEFAULT_MODE,
+    path: str | None = None,
+) -> str:
+    """扫描最近拖入的音频（同步实现，供 CLI 与内部调用）。"""
+    effective_task = task.strip() if task and task.strip() else DEFAULT_AUDIO_TASK
+    profile_for_mode(mode)
+    if path:
+        selected = resolve_dragged_path(path, "audio")
+        return f"已识别拖拽音频：{selected}\n\n{read_audio(str(selected), effective_task, mode)}"
+    candidates = scan_dragged_media("audio")
+    if not candidates:
+        raise ReadImageError(
+            tr(
+                "没有找到最近拖入的音频。请保存为文件后提供路径调用 omnimodal_recognize_audio。",
+                "No recently dragged audio found. Save it to a file and call "
+                "omnimodal_recognize_audio with the path.",
+            )
+        )
+    if len(candidates) == 1:
+        selected = candidates[0]
+        return f"已识别拖拽音频：{selected}\n\n{read_audio(str(selected), effective_task, mode)}"
+    return _format_drag_candidates("音频", candidates)
+
+
+@mcp.tool(name="omnimodal_read_dragged_audio", annotations=EXTERNAL_SEND_ANNOTATIONS)
+async def _omnimodal_read_dragged_audio_tool(
+    task: Annotated[
+        str,
+        Field(description="本次要从拖拽音频中提取或分析的具体内容。"),
+    ] = DEFAULT_AUDIO_TASK,
+    mode: Annotated[
+        str,
+        Field(
+            description=(
+                "识别档位：quick/standard/full/quick_analysis/balanced_analysis/"
+                "deep_analysis，默认 standard。"
+            )
+        ),
+    ] = DEFAULT_MODE,
+    path: Annotated[
+        str | None,
+        Field(description="多候选时指定要识别的拖拽音频路径。"),
+    ] = None,
+    ctx: Context = None,  # type: ignore[assignment]
+) -> str:
+    """扫描最近拖入的音频，单候选自动识别，多候选要求指定 path。"""
+    await ctx.report_progress(0, 1, tr("正在扫描拖拽音频…", "Scanning dragged audio..."))
+    result = read_dragged_audio(task, mode, path=path)
+    await ctx.report_progress(1, 1, tr("拖拽音频识别完成。", "Dragged audio recognition complete."))
+    return result
+
+
+@mcp.tool(name="omnimodal_recognize_video", annotations=EXTERNAL_SEND_ANNOTATIONS)
+async def _omnimodal_recognize_video_tool(
     video: Annotated[
         str,
         Field(description="本地视频文件绝对路径，或 http(s) 视频 URL。"),
@@ -443,7 +557,7 @@ async def _read_video_tool(
     ] = DEFAULT_MODE,
     ctx: Context = None,  # type: ignore[assignment]
 ) -> str:
-    """读取本地视频或视频 URL，并按 task 和 mode 调用豆包视频理解。"""
+    """读取本地视频或视频 URL，并按 task 和 mode 调用视频理解模型。"""
     effective_task = task.strip() if task and task.strip() else DEFAULT_VIDEO_TASK
     profile_for_mode(mode)
     await ctx.report_progress(0, 100, tr("正在分析视频…", "Analyzing video..."))
@@ -454,7 +568,7 @@ async def _read_video_tool(
 
 def _clamp_workers(value: int | None) -> int:
     if value is None:
-        requested = env_int("READ_IMAGE_BATCH_WORKERS", DEFAULT_BATCH_WORKERS)
+        requested = env_int("OMNIMODAL_BATCH_WORKERS", DEFAULT_BATCH_WORKERS)
     else:
         try:
             requested = int(value)
@@ -464,7 +578,7 @@ def _clamp_workers(value: int | None) -> int:
 
 
 def _batch_timeout_sec(mode: str) -> int:
-    configured = env_int("READ_IMAGE_BATCH_TIMEOUT_SEC", 0)
+    configured = env_int("OMNIMODAL_BATCH_TIMEOUT_SEC", 0)
     if configured > 0:
         return max(1, configured)
     return profile_for_mode(mode).timeout_sec + BATCH_TIMEOUT_BUFFER_SEC
@@ -553,7 +667,7 @@ def read_images_batch(
 
     executor = ThreadPoolExecutor(
         max_workers=workers,
-        thread_name_prefix="read-image-batch",
+        thread_name_prefix="omnimodal-batch",
     )
     futures = [
         executor.submit(process, index, str(path).strip(), deadlines[index])
@@ -605,8 +719,8 @@ def read_images_batch(
     return _format_batch_results(completed)
 
 
-@mcp.tool(name="read_images_batch", annotations=EXTERNAL_SEND_ANNOTATIONS)
-async def _read_images_batch_tool(
+@mcp.tool(name="omnimodal_recognize_images_batch", annotations=EXTERNAL_SEND_ANNOTATIONS)
+async def _omnimodal_recognize_images_batch_tool(
     images: Annotated[
         list[str],
         Field(
@@ -670,9 +784,109 @@ async def _read_images_batch_tool(
         )
 
 
+def _run_media_batch(
+    items: list[str],
+    task: str,
+    mode: str,
+    max_workers: int,
+    kind: str,
+) -> str:
+    workers = _clamp_workers(max_workers)
+    results: list[str] = []
+    executor = ThreadPoolExecutor(max_workers=workers, thread_name_prefix=f"omnimodal-{kind}-batch")
+    try:
+        futures = []
+        for index, item in enumerate(items):
+
+            def call_one(index=index, item=item) -> tuple[int, str, str]:
+                try:
+                    if kind == "video":
+                        return index, item, read_video(item, task, mode)
+                    return index, item, read_audio(item, task, mode)
+                except Exception as exc:
+                    return index, item, f"错误：{exc}"
+
+            futures.append(executor.submit(call_one))
+        for future in futures:
+            index, item, content = future.result()
+            filename = item.split("\\")[-1].split("/")[-1]
+            results.append(f"## 第 {index + 1}/{len(items)} 个：{filename}\n\n{content}")
+    finally:
+        executor.shutdown(wait=True)
+    return "\n\n".join(results)
+
+
+@mcp.tool(name="omnimodal_recognize_videos_batch", annotations=EXTERNAL_SEND_ANNOTATIONS)
+async def _omnimodal_recognize_videos_batch_tool(
+    videos: Annotated[
+        list[str],
+        Field(description="本地视频路径或 http(s) 视频 URL 列表，至少 1 项。"),
+    ],
+    task: Annotated[
+        str,
+        Field(description="每个视频要提取或分析的统一任务。"),
+    ] = DEFAULT_VIDEO_TASK,
+    mode: Annotated[
+        str,
+        Field(description="识别档位，默认 standard。"),
+    ] = DEFAULT_MODE,
+    max_workers: Annotated[
+        int,
+        Field(description="并行 worker 数，默认 4，最大 8。"),
+    ] = DEFAULT_BATCH_WORKERS,
+    ctx: Context = None,  # type: ignore[assignment]
+) -> str:
+    """批量识别视频并按原顺序汇总。"""
+    if not isinstance(videos, list) or not videos:
+        raise ReadImageError("videos 参数必须是非空列表。")
+    effective_task = task.strip() if task and task.strip() else DEFAULT_VIDEO_TASK
+    return await asyncio.to_thread(
+        _run_media_batch,
+        videos,
+        effective_task,
+        mode,
+        max_workers,
+        "video",
+    )
+
+
+@mcp.tool(name="omnimodal_recognize_audios_batch", annotations=EXTERNAL_SEND_ANNOTATIONS)
+async def _omnimodal_recognize_audios_batch_tool(
+    audios: Annotated[
+        list[str],
+        Field(description="本地音频路径或 http(s) 音频 URL 列表，至少 1 项。"),
+    ],
+    task: Annotated[
+        str,
+        Field(description="每个音频要提取或分析的统一任务。"),
+    ] = DEFAULT_AUDIO_TASK,
+    mode: Annotated[
+        str,
+        Field(description="识别档位，默认 standard。"),
+    ] = DEFAULT_MODE,
+    max_workers: Annotated[
+        int,
+        Field(description="并行 worker 数，默认 4，最大 8。"),
+    ] = DEFAULT_BATCH_WORKERS,
+    ctx: Context = None,  # type: ignore[assignment]
+) -> str:
+    """批量识别音频并按原顺序汇总。"""
+    if not isinstance(audios, list) or not audios:
+        raise ReadImageError("audios 参数必须是非空列表。")
+    effective_task = task.strip() if task and task.strip() else DEFAULT_AUDIO_TASK
+    return await asyncio.to_thread(
+        _run_media_batch,
+        audios,
+        effective_task,
+        mode,
+        max_workers,
+        "audio",
+    )
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Read local images or videos via the Doubao vision API."
+        description="Recognize images, videos, or audio via Qwen/DashScope APIs."
     )
     parser.add_argument(
         "--image",
@@ -683,6 +897,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--video",
         default=None,
         help="Local video path or http(s) video URL.",
+    )
+    parser.add_argument(
+        "--audio",
+        default=None,
+        help="Local audio path or http(s) audio URL.",
     )
     parser.add_argument(
         "--task",
@@ -712,6 +931,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Scan and read a recently dragged video.",
     )
     parser.add_argument(
+        "--dragged-audio",
+        action="store_true",
+        help="Scan and read a recently dragged audio file.",
+    )
+    parser.add_argument(
         "--dragged-path",
         default=None,
         help="Explicit dragged media path for --dragged-image/--dragged-video.",
@@ -723,6 +947,9 @@ def _run_cli_handler(args: argparse.Namespace) -> int:
     if args.dragged_image:
         task = args.task or DEFAULT_TASK
         print(read_dragged_image(task, args.mode, path=args.dragged_path))
+    elif args.dragged_audio:
+        task = args.task or DEFAULT_AUDIO_TASK
+        print(read_dragged_audio(task, args.mode, path=args.dragged_path))
     elif args.dragged_video:
         task = args.task or DEFAULT_VIDEO_TASK
         print(read_dragged_video(task, args.mode, path=args.dragged_path))
@@ -732,8 +959,11 @@ def _run_cli_handler(args: argparse.Namespace) -> int:
     elif args.video:
         task = args.task or DEFAULT_VIDEO_TASK
         print(read_video(args.video, task, args.mode))
+    elif args.audio:
+        task = args.task or DEFAULT_AUDIO_TASK
+        print(read_audio(args.audio, task, args.mode))
     elif not args.image:
-        raise ReadImageError("请提供 --image 或 --video 参数。")
+        raise ReadImageError("请提供 --image、--video 或 --audio 参数。")
     elif len(args.image) == 1:
         task = args.task or DEFAULT_TASK
         print(read_image(args.image[0], task, args.mode))

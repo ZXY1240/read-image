@@ -19,6 +19,9 @@ _UPLOAD_POLICY = {
         "policy": "pol-xxx",
         "signature": "sig-xxx",
         "oss_access_key_id": "key-xxx",
+        "upload_dir": "uploads/2026/08/05",
+        "x_oss_object_acl": "private",
+        "x_oss_forbid_overwrite": "true",
         "expire_in_seconds": 3600,
     }
 }
@@ -26,12 +29,31 @@ _UPLOAD_POLICY = {
 
 class FakeClient:
     def __init__(self):
+        self.gets: list[dict] = []
         self.posts: list[dict] = []
         self.responses: dict[str, object] = {}
 
+    def get(
+        self,
+        url,
+        params=None,
+        headers=None,
+        timeout=None,
+        **kwargs,
+    ):
+        self.gets.append({"url": url, "params": params})
+        return self.responses.get("get")
+
     def post(
-        self, url, params=None, headers=None, json=None, data=None, files=None,
-        timeout=None, **kwargs
+        self,
+        url,
+        params=None,
+        headers=None,
+        json=None,
+        data=None,
+        files=None,
+        timeout=None,
+        **kwargs,
     ):
         self.posts.append(
             {"url": url, "params": params, "json": json, "data": data, "files": files}
@@ -60,19 +82,25 @@ def test_get_temporary_url_full_flow(fake: FakeClient, tmp_path) -> None:
     file_ = tmp_path / "sample.mp3"
     file_.write_bytes(b"audio-data")
 
-    fake.responses["post"] = FakeResponse(data=_UPLOAD_POLICY)
+    fake.responses["get"] = FakeResponse(data=_UPLOAD_POLICY)
+    fake.responses["post"] = FakeResponse()
 
     result = upload.get_temporary_url(str(file_), "paraformer-v2", "audio/mpeg")
 
-    assert result.startswith("oss://read-image/")
-    # 两次 POST：getPolicy 一次 + 上传一次
-    assert len(fake.posts) == 2
-    policy_req = fake.posts[0]
+    assert result == "oss://uploads/2026/08/05/sample.mp3"
+    # getPolicy 一次 + 上传一次
+    assert len(fake.gets) == 1
+    assert len(fake.posts) == 1
+    policy_req = fake.gets[0]
     assert policy_req["params"] == {"action": "getPolicy", "model": "paraformer-v2"}
-    upload_req = fake.posts[1]
+    upload_req = fake.posts[0]
     assert upload_req["data"]["policy"] == "pol-xxx"
-    assert upload_req["data"]["signature"] == "sig-xxx"
-    assert upload_req["data"]["ossAccessKeyId"] == "key-xxx"
+    assert upload_req["data"]["Signature"] == "sig-xxx"
+    assert upload_req["data"]["OSSAccessKeyId"] == "key-xxx"
+    assert upload_req["data"]["x-oss-object-acl"] == "private"
+    assert upload_req["data"]["x-oss-forbid-overwrite"] == "true"
+    assert upload_req["data"]["success_action_status"] == "200"
+    assert upload_req["url"] == "https://dashscope-instant.oss-cn-beijing.aliyuncs.com"
     # 文件句柄在请求完成后已关闭（无 with 泄漏时文件可正常读写删除）
     assert file_.is_file()
     file_.unlink()  # 不报 WindowsError 即句柄未占用
@@ -81,15 +109,14 @@ def test_get_temporary_url_full_flow(fake: FakeClient, tmp_path) -> None:
 def test_get_temporary_url_file_missing(fake: FakeClient, tmp_path) -> None:
     with pytest.raises(ReadImageError):
         upload.get_temporary_url(str(tmp_path / "nope.mp3"), "paraformer-v2")
-    assert fake.posts == []  # 未发起任何请求
+    assert fake.gets == []
+    assert fake.posts == []
 
 
-def test_get_temporary_url_policy_missing_upload_host(
-    fake: FakeClient, tmp_path
-) -> None:
+def test_get_temporary_url_policy_missing_upload_host(fake: FakeClient, tmp_path) -> None:
     file_ = tmp_path / "a.mp3"
     file_.write_bytes(b"x")
-    fake.responses["post"] = FakeResponse(data={"data": {"policy": "p"}})
+    fake.responses["get"] = FakeResponse(data={"data": {"policy": "p"}})
     with pytest.raises(ReadImageError):
         upload.get_temporary_url(str(file_), "paraformer-v2")
 
@@ -102,10 +129,10 @@ def test_get_temporary_url_upload_http_error(fake: FakeClient, tmp_path) -> None
         def __init__(self):
             self.n = 0
 
+        def get(self, url, **kwargs):
+            return FakeResponse(data=_UPLOAD_POLICY)
+
         def post(self, url, **kwargs):
-            self.n += 1
-            if self.n == 1:
-                return FakeResponse(data=_UPLOAD_POLICY)
             return FakeResponse(status_code=403, data={"Error": {"Message": "denied"}})
 
     seq = Seq()

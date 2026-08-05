@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import tempfile
+from pathlib import Path
 
 import pytest
 
@@ -24,16 +26,85 @@ class FakeResponse:
 
 # ---- tier -> spec 映射与价格 ----
 
-def test_t2i_spec_standard_uses_qwen_image_20() -> None:
+
+def test_t2i_spec_standard_uses_qwen_image_30() -> None:
     spec = gs._t2i_spec("standard")
-    assert spec.model == "qwen-image-2.0"
-    assert spec.price_hint == 0.20
+    assert spec.model == "qwen-image-3.0"
+    assert spec.price_hint == 0.18
+    # 实测确认两个模型都走 multimodal-generation（Chat、同步）
+    assert spec.endpoint == gs.T2I_CHAT_ENDPOINT
 
 
 def test_t2i_spec_pro_uses_wan27_image_pro() -> None:
     spec = gs._t2i_spec("pro")
     assert spec.model == "wan2.7-image-pro"
     assert spec.price_hint == 0.50
+    assert spec.endpoint == gs.T2I_CHAT_ENDPOINT
+
+
+def test_generate_image_requires_confirmation() -> None:
+    result = asyncio.run(
+        gs.generate_image(
+            "a cat",
+            tier="standard",
+            size="1024*1024",
+            n=1,
+            confirm=False,
+        )
+    )
+    assert result["status"] == "NEEDS_CONFIRMATION"
+    assert "confirm=true" in result["note"]
+
+
+def test_generate_image_chat_payload_uses_input_messages(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """payload 必须用 input.messages（真实调用确认），不是顶层 messages。"""
+    captured: dict = {}
+
+    class FakeResp:
+        status_code = 200
+
+        def __init__(self):
+            pass
+
+        def json(self):
+            return {
+                "output": {
+                    "choices": [
+                        {"message": {"content": [{"image": "https://x/img.png", "type": "image"}]}}
+                    ]
+                }
+            }
+
+    def fake_post(*args, **kwargs):
+        captured["json"] = kwargs.get("json")
+        return FakeResp()
+
+    fake_client = type("FakeHttp", (), {"post": fake_post})()
+    monkeypatch.setattr("omnimodal.mcp.generation_server.http_client", fake_client)
+    monkeypatch.setattr(
+        "omnimodal.mcp.generation_server._output_dir",
+        lambda: Path(tempfile.gettempdir()),
+    )
+    monkeypatch.setattr(
+        "omnimodal.mcp.generation_server.GenerationClient.download_result",
+        lambda self, url, name: Path(tempfile.gettempdir()) / name,
+    )
+
+    asyncio.run(
+        gs.generate_image(
+            "a cat",
+            tier="standard",
+            size="1024*1024",
+            n=1,
+            confirm=True,
+        )
+    )
+
+    body = captured["json"]
+    assert "input" in body and "messages" not in body
+    assert body["input"]["messages"][0]["content"] == [{"text": "a cat"}]
 
 
 def test_t2v_spec_tiers() -> None:
@@ -45,13 +116,13 @@ def test_t2v_spec_tiers() -> None:
     assert pro.price_hint == 1.00
     max_ = gs._t2v_spec("max")
     assert max_.model == "happyhorse-1.1-t2v"
-    assert max_.price_hint == 0.72
+    assert max_.price_hint == 1.20
 
 
 def test_tts_spec_tiers() -> None:
     standard = gs._tts_spec("standard")
-    assert standard.model == "qwen-audio-3.0-tts"
-    assert standard.price_hint == 1.00
+    assert standard.model == "qwen3-tts-instruct-flash"
+    assert standard.price_hint == 0.80
     pro = gs._tts_spec("pro")
     assert pro.model == "cosyvoice-v3.5-plus"
     assert pro.price_hint == 1.50
@@ -63,20 +134,20 @@ def test_field_descriptions_match_spec_prices() -> None:
 
     source = inspect.getsource(gs)
     # 文生图
-    assert "standard(qwen-image-2.0 0.2元/张)" in source
-    assert "pro(wan2.7-image-pro 0.5元/张)" in source
+    assert "standard(qwen-image-3.0)" in source
+    assert "pro(wan2.7-image-pro)" in source
     # 文生视频
-    assert "standard(wan2.7-t2v 0.6元/秒)" in source
-    assert "pro(wan2.7-t2v 1元/秒)" in source
-    assert "max(happyhorse-1.1-t2v 0.72元/秒)" in source
+    assert "standard(wan2.7-t2v)" in source
+    assert "pro(wan2.7-t2v 1080P)" in source
+    assert "max(happyhorse-1.1-t2v)" in source
     # 图生视频
-    assert "standard(wan2.7-i2v 0.6元/秒)" in source
+    assert "standard(wan2.7-i2v)" in source
     # TTS
-    assert "standard(qwen-audio-3.0-tts 1元/万字符)" in source
-    assert "pro(cosyvoice-v3.5-plus 1.5元/万字符)" in source
+    assert "standard/pro/max，音频生成专用档" in source
 
 
 # ---- 费用计算 ----
+
 
 def test_format_cost_with_price() -> None:
     spec = gs._t2v_spec("standard")
@@ -87,15 +158,16 @@ def test_format_cost_with_price() -> None:
 
 
 def test_default_tier_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("READ_IMAGE_DEFAULT_TIER", raising=False)
+    monkeypatch.delenv("OMNIMODAL_DEFAULT_TIER", raising=False)
     assert gs._default_tier() == "standard"
-    monkeypatch.setenv("READ_IMAGE_DEFAULT_TIER", "max")
+    monkeypatch.setenv("OMNIMODAL_DEFAULT_TIER", "max")
     assert gs._default_tier() == "max"
-    monkeypatch.setenv("READ_IMAGE_DEFAULT_TIER", "bogus")
+    monkeypatch.setenv("OMNIMODAL_DEFAULT_TIER", "bogus")
     assert gs._default_tier() == "standard"
 
 
 # ---- get_generation_result 状态流转 ----
+
 
 class FakePollClient:
     def __init__(self, data):
@@ -143,3 +215,125 @@ def test_get_generation_result_failed(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_get_generation_result_pending(monkeypatch: pytest.MonkeyPatch) -> None:
     result = _run({"output": {"task_status": "RUNNING"}}, monkeypatch)
     assert result == {"task_id": "task-1", "status": "RUNNING"}
+
+
+# ---- v3.0.0 audio/video generation fixes ----
+
+
+def test_music_endpoint_is_dashscope_music_generation() -> None:
+    assert gs.MUSIC_ENDPOINT == (
+        "https://dashscope.aliyuncs.com/api/v1/services/audio/music/generation"
+    )
+
+
+def test_music_payload_has_no_duration_and_infers_gender() -> None:
+    payload = gs._music_payload("女声抒情歌曲")
+    assert payload["model"] == "fun-music-v1"
+    assert payload["input"]["prompt"] == "女声抒情歌曲"
+    assert payload["input"]["gender"] == "female"
+    assert "duration" not in payload["input"]
+
+
+def test_voice_design_uses_customization_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict = {}
+
+    class FakeResp:
+        status_code = 200
+
+        def json(self):
+            return {"output": {"voice": "voice-123"}}
+
+    def fake_post(*args, **kwargs):
+        captured["url"] = args[1]
+        captured["json"] = kwargs["json"]
+        return FakeResp()
+
+    fake_client = type("FakeHttp", (), {"post": fake_post})()
+    monkeypatch.setattr(gs, "http_client", fake_client)
+    voice_id = gs._create_custom_voice(
+        "温柔女声",
+        gs.QWEN_TTS_VD_MODEL,
+        model="qwen-voice-design",
+    )
+    assert voice_id == "voice-123"
+    assert captured["url"] == gs.VOICE_CUSTOMIZATION_ENDPOINT
+    body = captured["json"]
+    assert body["model"] == "qwen-voice-design"
+    assert body["input"]["target_model"] == gs.QWEN_TTS_VD_MODEL
+    assert body["input"]["action"] == "create"
+
+
+def test_voice_clone_payload_uses_audio_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict = {}
+
+    class FakeResp:
+        status_code = 200
+
+        def json(self):
+            return {"output": {"voice": "voice-clone-1"}}
+
+    def fake_post(*args, **kwargs):
+        captured["json"] = kwargs["json"]
+        return FakeResp()
+
+    fake_client = type("FakeHttp", (), {"post": fake_post})()
+    monkeypatch.setattr(gs, "http_client", fake_client)
+    voice_id = gs._create_custom_voice(
+        "",
+        gs.QWEN_TTS_VC_MODEL,
+        audio="https://example.invalid/sample.mp3",
+        model="qwen-voice-enrollment",
+    )
+    assert voice_id == "voice-clone-1"
+    body = captured["json"]
+    assert body["model"] == "qwen-voice-enrollment"
+    assert body["input"]["audio"] == {"data": "https://example.invalid/sample.mp3"}
+
+
+def test_submit_audio_sync_downloads_audio_url(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    class FakeResp:
+        status_code = 200
+
+        def json(self):
+            return {"output": {"audio": {"url": "https://example.invalid/result.mp3"}}}
+
+    class FakeHttp:
+        def post(self, *args, **kwargs):
+            return FakeResp()
+
+    monkeypatch.setattr(gs, "http_client", FakeHttp())
+    monkeypatch.setattr(gs, "_output_dir", lambda: tmp_path)
+    monkeypatch.setattr(
+        gs,
+        "_download",
+        lambda client, url: tmp_path / "result.mp3",
+    )
+    saved = gs._submit_audio_sync(
+        gs.MUSIC_ENDPOINT,
+        gs._music_payload("轻快民谣"),
+        "fun-music-v1",
+    )
+    assert saved == tmp_path / "result.mp3"
+
+
+def test_edit_video_requires_confirmation() -> None:
+    result = asyncio.run(
+        gs.edit_video(
+            "video.mp4",
+            "转换成黏土风格",
+            tier="standard",
+            confirm=False,
+        )
+    )
+    assert result["status"] == "NEEDS_CONFIRMATION"
+
+
+def test_video_resolution_normalizes_480p_to_720p() -> None:
+    assert gs._video_resolution("480P") == "720P"
+    assert gs._video_resolution("720P") == "720P"
+    assert gs._video_resolution("1080P") == "1080P"

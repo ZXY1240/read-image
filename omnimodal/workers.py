@@ -9,7 +9,7 @@ from omnimodal.config import video_worker_count
 
 video_executor = ThreadPoolExecutor(
     max_workers=video_worker_count(),
-    thread_name_prefix="read-image-video",
+    thread_name_prefix="omnimodal-video",
 )
 atexit.register(video_executor.shutdown, wait=False)
 

@@ -122,6 +122,20 @@ class VisionClient:
             timeout_sec=timeout_sec,
         )
 
+    def call_audio(
+        self,
+        audio_url: str,
+        task: str,
+        mode: str | None,
+        timeout_sec: int | None = None,
+    ) -> str:
+        return self._provider.call_audio(
+            audio_url,
+            task,
+            mode,
+            timeout_sec=timeout_sec,
+        )
+
     def call_video_file_id(
         self,
         file_id: str,
@@ -180,6 +194,14 @@ def call_video(
     return default_client.call_video(video_url, task, mode)
 
 
+def call_audio(
+    audio_url: str,
+    task: str,
+    mode: str | None,
+) -> str:
+    return default_client.call_audio(audio_url, task, mode)
+
+
 def call_video_file_id(
     file_id: str,
     task: str,
@@ -221,6 +243,7 @@ __all__ = [
     "MAX_TIMEOUT_RETRIES",
     "VisionClient",
     "call_image",
+    "call_audio",
     "call_video",
     "call_video_file_id",
     "default_client",

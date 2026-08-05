@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass
 from typing import Any
 
-from omnimodal.config import DEFAULT_MODE
+from omnimodal.config import DEFAULT_MODE, profile_override_path
 from omnimodal.errors import ReadImageError, tr
 
 
@@ -41,6 +40,25 @@ VIDEO_TIMEOUTS: dict[str, int] = {
     "quick_analysis": 180,
     "balanced_analysis": 360,
     "deep_analysis": 600,
+}
+
+AUDIO_TIMEOUTS: dict[str, int] = {
+    "quick": 60,
+    "standard": 120,
+    "full": 300,
+    "quick_analysis": 120,
+    "balanced_analysis": 240,
+    "deep_analysis": 480,
+}
+
+IMAGE_TIMEOUTS: dict[str, int] = {
+    "ocr": 60,
+    "quick": 30,
+    "standard": 60,
+    "full": 180,
+    "quick_analysis": 90,
+    "balanced_analysis": 180,
+    "deep_analysis": 300,
 }
 
 
@@ -174,23 +192,23 @@ def normalize_mode(mode: str | None) -> str:
 
 
 def _profile_overrides() -> dict[str, dict[str, Any]]:
-    raw = os.environ.get("READ_IMAGE_PROFILES_JSON", "").strip()
-    if not raw:
+    path = profile_override_path()
+    if not path.is_file():
         return {}
     try:
-        parsed = json.loads(raw)
-    except json.JSONDecodeError as exc:
+        parsed = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
         raise ReadImageError(
             tr(
-                "READ_IMAGE_PROFILES_JSON 不是合法 JSON。",
-                "READ_IMAGE_PROFILES_JSON is not valid JSON.",
+                "profiles.json 不是合法 JSON。",
+                "profiles.json is not valid JSON.",
             )
         ) from exc
     if not isinstance(parsed, dict):
         raise ReadImageError(
             tr(
-                "READ_IMAGE_PROFILES_JSON 必须是对象。",
-                "READ_IMAGE_PROFILES_JSON must be an object.",
+                "profiles.json 必须是对象。",
+                "profiles.json must be an object.",
             )
         )
     normalized: dict[str, dict[str, Any]] = {}
@@ -242,3 +260,21 @@ def video_prompt_for_mode(mode: str | None) -> str:
 
 def video_timeout_for_mode(mode: str | None) -> int:
     return VIDEO_TIMEOUTS[normalize_mode(mode)]
+
+
+def audio_timeout_for_mode(mode: str | None) -> int:
+    return AUDIO_TIMEOUTS[normalize_mode(mode)]
+
+
+def image_timeout_for_mode(mode: str | None) -> int:
+    key = normalize_mode(mode)
+    return IMAGE_TIMEOUTS.get(key, profile_for_mode(key).timeout_sec)
+
+
+def module_prompt_for_mode(module: str, mode: str | None) -> str:
+    profile = profile_for_mode(mode)
+    if module == "audio":
+        return profile.system_prompt.replace("视觉", "音频")
+    if module == "video":
+        return profile.video_prompt
+    return profile.system_prompt

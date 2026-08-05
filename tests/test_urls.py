@@ -60,7 +60,7 @@ def test_blocks_hostname_resolving_to_private_ip(
 def test_allow_private_urls_env_override(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("READ_IMAGE_ALLOW_PRIVATE_URLS", "1")
+    monkeypatch.setenv("OMNIMODAL_ALLOW_PRIVATE_URLS", "1")
     assert validate_remote_url("http://127.0.0.1/") == "http://127.0.0.1/"
 
 

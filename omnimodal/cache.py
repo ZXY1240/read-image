@@ -12,7 +12,7 @@ from pathlib import Path
 class ImageCache:
     """Small thread-safe LRU cache for already-processed image results.
 
-    When ``cache_dir`` is provided (or the ``READ_IMAGE_CACHE_DIR``
+    When ``cache_dir`` is provided (or the ``OMNIMODAL_CACHE_DIR``
     environment variable is set), entries are also persisted to disk as
     JSON files so the cache survives process restarts. Disk failures are
     silent: the in-memory cache keeps working either way.
@@ -28,7 +28,7 @@ class ImageCache:
         self._ttl_sec = max(0, ttl_sec)
         self._items: OrderedDict[str, tuple[str, float]] = OrderedDict()
         self._lock = threading.Lock()
-        cache_dir_value = cache_dir or os.environ.get("READ_IMAGE_CACHE_DIR", "")
+        cache_dir_value = cache_dir or os.environ.get("OMNIMODAL_CACHE_DIR", "")
         self._cache_dir = Path(cache_dir_value).expanduser() if cache_dir_value else None
 
     def get(self, key: str) -> str | None:

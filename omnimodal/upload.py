@@ -10,9 +10,7 @@ Temporary files expire after 48 hours.
 
 from __future__ import annotations
 
-import hashlib
 import json
-import time
 from pathlib import Path
 from typing import Any
 
@@ -40,7 +38,7 @@ def _request_upload_policy(model: str) -> dict[str, Any]:
     """
     payload = {"action": "getPolicy", "model": model}
     try:
-        response = http_client.post(
+        response = http_client.get(
             _UPLOAD_POLICY_ENDPOINT,
             params=payload,
             headers=_upload_headers(),
@@ -90,9 +88,12 @@ def _upload_form(
     """POST the file as multipart form data to the OSS upload host."""
     fields = {
         "policy": str(policy.get("policy", "")),
-        "signature": str(policy.get("signature", "")),
-        "ossAccessKeyId": str(policy.get("oss_access_key_id", "")),
+        "Signature": str(policy.get("signature", "")),
+        "OSSAccessKeyId": str(policy.get("oss_access_key_id", "")),
+        "x-oss-object-acl": str(policy.get("x_oss_object_acl", "")),
+        "x-oss-forbid-overwrite": str(policy.get("x_oss_forbid_overwrite", "")),
         "key": key,
+        "success_action_status": "200",
     }
     try:
         with file_path.open("rb") as f:
@@ -118,11 +119,6 @@ def _upload_form(
         )
 
 
-def _key_for_path(file_path: Path) -> str:
-    digest = hashlib.sha256(str(file_path.resolve()).encode("utf-8")).hexdigest()[:16]
-    return f"read-image/{int(time.time())}-{digest}/{file_path.name}"
-
-
 def get_temporary_url(path: str, model: str, content_type: str = "application/octet-stream") -> str:
     """Upload a local file to DashScope temporary storage and return an oss:// URL.
 
@@ -144,6 +140,7 @@ def get_temporary_url(path: str, model: str, content_type: str = "application/oc
         )
     policy = _request_upload_policy(model)
     upload_host = str(policy["upload_host"])
-    key = _key_for_path(file_path)
+    upload_dir = str(policy.get("upload_dir", "omnimodal"))
+    key = f"{upload_dir.rstrip('/')}/{file_path.name}"
     _upload_form(upload_host, file_path, policy, key, content_type)
     return f"oss://{key}"

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import os
 import tempfile
 from pathlib import Path
 
+from omnimodal.config import allowed_output_dirs
 from omnimodal.errors import ReadImageError, tr
 
 
@@ -11,12 +11,10 @@ def _allowed_output_roots() -> list[Path]:
     roots = [
         Path(tempfile.gettempdir()).resolve(),
         Path.cwd().resolve(),
+        Path.home().joinpath(".omnimodal").resolve(),
     ]
-    configured = os.environ.get("READ_IMAGE_ALLOWED_OUTPUT_DIRS", "").strip()
-    for raw in configured.split(";"):
-        raw = raw.strip()
-        if raw:
-            roots.append(Path(raw).expanduser().resolve())
+    for raw in allowed_output_dirs():
+        roots.append(Path(raw).expanduser().resolve())
     return roots
 
 
@@ -37,10 +35,10 @@ def ensure_allowed_output_dir(
             raise ReadImageError(
                 tr(
                     "输出目录不在允许范围内。请使用临时目录、当前工作区，"
-                    "或通过 READ_IMAGE_ALLOWED_OUTPUT_DIRS 添加允许目录。",
+                    "或通过 OMNIMODAL_ALLOWED_OUTPUT_DIRS 添加允许目录。",
                     "Output directory is outside the allowed roots. Use a temp "
                     "directory, the current workspace, or add the directory to "
-                    "READ_IMAGE_ALLOWED_OUTPUT_DIRS.",
+                    "OMNIMODAL_ALLOWED_OUTPUT_DIRS.",
                 )
             )
         target.mkdir(parents=True, exist_ok=True)
@@ -49,4 +47,4 @@ def ensure_allowed_output_dir(
         target = Path(default_dir).expanduser().resolve()
         target.mkdir(parents=True, exist_ok=True)
         return target
-    return Path(tempfile.mkdtemp(prefix="read-image-output-"))
+    return Path(tempfile.mkdtemp(prefix="omnimodal-output-"))

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -45,6 +46,7 @@ def test_video_profiles_use_longer_timeouts() -> None:
 
 
 def test_profiles_json_overrides_profile_fields(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     overrides = {
@@ -56,7 +58,9 @@ def test_profiles_json_overrides_profile_fields(
             "video_prompt": "custom video prompt",
         }
     }
-    monkeypatch.setenv("READ_IMAGE_PROFILES_JSON", json.dumps(overrides))
+    profile_path = tmp_path / "profiles.json"
+    profile_path.write_text(json.dumps(overrides), encoding="utf-8")
+    monkeypatch.setattr("omnimodal.profiles.profile_override_path", lambda: profile_path)
     quick = profile_for_mode("quick")
     assert quick.thinking_enabled is True
     assert quick.max_tokens == 99
@@ -66,17 +70,23 @@ def test_profiles_json_overrides_profile_fields(
 
 
 def test_profiles_json_prompt_applies_to_video_without_video_prompt(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     overrides = {"standard": {"prompt": "shared prompt"}}
-    monkeypatch.setenv("READ_IMAGE_PROFILES_JSON", json.dumps(overrides))
+    profile_path = tmp_path / "profiles.json"
+    profile_path.write_text(json.dumps(overrides), encoding="utf-8")
+    monkeypatch.setattr("omnimodal.profiles.profile_override_path", lambda: profile_path)
     assert profile_for_mode("standard").system_prompt == "shared prompt"
     assert video_prompt_for_mode("standard") == "shared prompt"
 
 
 def test_profiles_json_invalid_raises(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("READ_IMAGE_PROFILES_JSON", "{not-json")
+    profile_path = tmp_path / "profiles.json"
+    profile_path.write_text("{not-json", encoding="utf-8")
+    monkeypatch.setattr("omnimodal.profiles.profile_override_path", lambda: profile_path)
     with pytest.raises(ReadImageError):
         profile_for_mode("standard")

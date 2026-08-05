@@ -13,6 +13,7 @@ from omnimodal.errors import ReadImageError, tr
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tmp"}
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm", ".avi", ".mkv", ".tmp"}
+AUDIO_EXTENSIONS = {".mp3", ".wav", ".ogg", ".oga", ".m4a", ".aac", ".flac", ".amr", ".wma", ".tmp"}
 MAX_DRAG_CANDIDATES = 20
 
 
@@ -29,6 +30,39 @@ def _is_image_file(path: Path) -> bool:
 
 def _is_video_file(path: Path) -> bool:
     if path.suffix.lower() not in VIDEO_EXTENSIONS:
+        return False
+    if path.suffix.lower() != ".tmp":
+        return True
+    try:
+        import imageio_ffmpeg
+
+        ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+        result = subprocess.run(
+            [ffmpeg, "-v", "error", "-i", str(path), "-f", "null", "-"],
+            capture_output=True,
+            timeout=10,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
+def _is_audio_file(path: Path) -> bool:
+    if path.suffix.lower() not in AUDIO_EXTENSIONS:
+        return False
+    if path.suffix.lower() != ".tmp":
+        return True
+    try:
+        import imageio_ffmpeg
+
+        ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+        result = subprocess.run(
+            [ffmpeg, "-v", "error", "-i", str(path), "-f", "null", "-"],
+            capture_output=True,
+            timeout=10,
+        )
+        return result.returncode == 0
+    except Exception:
         return False
     if path.suffix.lower() != ".tmp":
         return True
@@ -80,6 +114,8 @@ def scan_dragged_media(kind: str) -> list[Path]:
                     continue
                 if kind == "video" and not _is_video_file(entry):
                     continue
+                if kind == "audio" and not _is_audio_file(entry):
+                    continue
                 seen.add(entry.resolve().as_posix())
                 candidates.append(entry.resolve())
             except OSError:
@@ -102,7 +138,7 @@ def resolve_dragged_path(raw_path: str, kind: str) -> Path:
                 f"请改用 read_clipboard_image 或提供明确文件路径调用 read_image/read_video。",
                 f"Selected file is not in the dragged media candidates: {path}. "
                 f"Dragged media in Claude Desktop is not written to disk; use "
-                f"read_clipboard_image or provide an explicit path to read_image/read_video.",
+                f"read_clipboard_image or provide an explicit path to the media tool.",
             )
         )
     return path

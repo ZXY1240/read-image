@@ -1,0 +1,227 @@
+[
+  {
+    "model": "qwen3.7-flash",
+    "kind": "image",
+    "ok": true,
+    "elapsed_sec": 0.59,
+    "result_preview": "OMNIMODAL 3.0 PROBE  \nHello Qwen",
+    "files_count": 0,
+    "error": null
+  },
+  {
+    "model": "qwen3.7-flash",
+    "kind": "image_video",
+    "ok": true,
+    "elapsed_sec": 5.77,
+    "result_preview": "OMNIMODAL 3.0 PROBE  \nHello Qwen",
+    "files_count": 0,
+    "error": null
+  },
+  {
+    "model": "qwen3.7-plus",
+    "kind": "image_video",
+    "ok": true,
+    "elapsed_sec": 1.39,
+    "result_preview": "OMNIMODAL 3.0 PROBE  \nHello Qwen",
+    "files_count": 0,
+    "error": null
+  },
+  {
+    "model": "qwen3.7-max",
+    "kind": "image_video",
+    "ok": false,
+    "elapsed_sec": 1.87,
+    "result_preview": null,
+    "files_count": 0,
+    "error": "ReadImageError: 不支持此视频格式。请先用格式转换工具把视频转成 MP4 后再试。"
+  },
+  {
+    "model": "qwen3.5-ocr",
+    "kind": "image_ocr",
+    "ok": true,
+    "elapsed_sec": 0.6,
+    "result_preview": "OMNIMODAL 3.0 PROBE  \nHello Qwen",
+    "files_count": 0,
+    "error": null
+  },
+  {
+    "model": "qwen3.5-omni-flash",
+    "kind": "image_audio_video",
+    "ok": true,
+    "elapsed_sec": 1.69,
+    "result_preview": "OMNIMODAL 3.0 PROBE  \nHello Owen",
+    "files_count": 0,
+    "error": null
+  },
+  {
+    "model": "qwen3.5-omni-plus",
+    "kind": "image_audio_video",
+    "ok": true,
+    "elapsed_sec": 2.86,
+    "result_preview": "OMNIMODAL 3.0 PROBE  \nHello Qwen",
+    "files_count": 0,
+    "error": null
+  },
+  {
+    "model": "fun-asr",
+    "kind": "asr",
+    "ok": true,
+    "elapsed_sec": 5.92,
+    "result_preview": "欢迎使用阿里云。",
+    "files_count": 0,
+    "error": null
+  },
+  {
+    "model": "paraformer-v2",
+    "kind": "asr",
+    "ok": true,
+    "elapsed_sec": 5.73,
+    "result_preview": "欢迎您使用阿里云。",
+    "files_count": 0,
+    "error": null
+  },
+  {
+    "model": "qwen3-asr-flash",
+    "kind": "asr",
+    "ok": true,
+    "elapsed_sec": 0.6,
+    "result_preview": "欢迎与使用阿里云。",
+    "files_count": 0,
+    "error": null
+  },
+  {
+    "model": "qwen-image-3.0",
+    "kind": "image_generation",
+    "ok": true,
+    "elapsed_sec": 46.8,
+    "result_preview": null,
+    "files_count": 1,
+    "error": null
+  },
+  {
+    "model": "qwen-image-3.0-pro",
+    "kind": "image_generation",
+    "ok": true,
+    "elapsed_sec": 31.01,
+    "result_preview": null,
+    "files_count": 1,
+    "error": null
+  },
+  {
+    "model": "wan2.7-image-pro",
+    "kind": "image_generation",
+    "ok": true,
+    "elapsed_sec": 15.23,
+    "result_preview": null,
+    "files_count": 1,
+    "error": null
+  },
+  {
+    "model": "qwen-image-edit-max",
+    "kind": "image_editing",
+    "ok": true,
+    "elapsed_sec": 21.3,
+    "result_preview": null,
+    "files_count": 1,
+    "error": null
+  },
+  {
+    "model": "qwen-audio-3.0-tts-flash",
+    "kind": "tts",
+    "ok": true,
+    "elapsed_sec": 1.29,
+    "result_preview": null,
+    "files_count": 1,
+    "error": null
+  },
+  {
+    "model": "qwen3-tts-instruct-flash",
+    "kind": "tts",
+    "ok": true,
+    "elapsed_sec": 1.6,
+    "result_preview": null,
+    "files_count": 1,
+    "error": null
+  },
+  {
+    "model": "cosyvoice-v3.5-plus",
+    "kind": "tts",
+    "ok": true,
+    "elapsed_sec": 8.43,
+    "result_preview": null,
+    "files_count": 1,
+    "error": null
+  },
+  {
+    "model": "fun-music-v1",
+    "kind": "music_generation",
+    "ok": false,
+    "elapsed_sec": 0.96,
+    "result_preview": null,
+    "files_count": 0,
+    "error": "ReadImageError: 音频生成请求失败（HTTP 403）。 {\"code\":\"AccessDenied\",\"message\":\"Access denied. For details, see: https://help.aliyun.com/zh/model-studio/error-code#access-denied\",\"request_id\":\"7c159480-b203-9aa3-b342-281063f837d8\"}"
+  },
+  {
+    "model": "qwen-voice-enrollment",
+    "kind": "voice_clone",
+    "ok": true,
+    "elapsed_sec": 3.07,
+    "result_preview": null,
+    "files_count": 1,
+    "error": null
+  },
+  {
+    "model": "qwen-voice-design",
+    "kind": "voice_design",
+    "ok": true,
+    "elapsed_sec": 5.47,
+    "result_preview": null,
+    "files_count": 1,
+    "error": null
+  },
+  {
+    "model": "wan2.7-t2v",
+    "kind": "video_generation",
+    "ok": true,
+    "elapsed_sec": 254.74,
+    "result_preview": null,
+    "files_count": 1,
+    "error": null
+  },
+  {
+    "model": "wan2.7-i2v",
+    "kind": "video_generation_i2v",
+    "ok": true,
+    "elapsed_sec": 41.86,
+    "result_preview": null,
+    "files_count": 1,
+    "error": null
+  },
+  {
+    "model": "wan2.7-videoedit",
+    "kind": "video_editing",
+    "ok": true,
+    "elapsed_sec": 184.33,
+    "result_preview": null,
+    "files_count": 1,
+    "error": null
+  },
+  {
+    "model": "happyhorse-1.1-t2v",
+    "kind": "video_generation",
+    "ok": true,
+    "elapsed_sec": 72.14,
+    "result_preview": null,
+    "files_count": 1,
+    "error": null
+  },
+  {
+    "model": "happyhorse-1.1-i2v",
+    "kind": "video_generation_i2v",
+    "ok": true,
+    "elapsed_sec": 92.79,
+    "result_preview": null,
+    "files_count": 1,
+    "error": null
+  }
+]

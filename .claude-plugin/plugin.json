@@ -1,7 +1,7 @@
 {
   "name": "omnimodal",
-  "version": "2.0.0",
-  "description": "Multimodal plugin for Claude Code: recognize audio, images, and video through Doubao, GLM, or Qwen-compatible APIs, plus image, video, and speech generation.",
+  "version": "3.0.0",
+  "description": "Omnimodal plugin for Claude Code: recognize and generate images, video, and audio through Qwen/DashScope.",
   "author": {
     "name": "ZXY1240",
     "url": "https://github.com/ZXY1240"
@@ -16,8 +16,6 @@
     "tts",
     "omnimodal",
     "mcp",
-    "doubao",
-    "glm",
     "qwen"
   ],
   "mcpServers": "./.claude-mcp.json"

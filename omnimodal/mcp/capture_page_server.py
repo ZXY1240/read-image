@@ -29,8 +29,8 @@ from omnimodal.mcp.common import EXTERNAL_SEND_ANNOTATIONS, run_cli
 from omnimodal.paths import ensure_allowed_output_dir
 from omnimodal.urls import validate_remote_url
 
-mcp = FastMCP("capture-page")
-logger = configure_logging("capture-page")
+mcp = FastMCP("omnimodal-capture-page")
+logger = configure_logging("omnimodal-capture-page")
 
 DEFAULT_VIEWPORT = "1280x800"
 DEFAULT_TIMEOUT_SEC = 60
@@ -72,7 +72,7 @@ def _parse_viewport(viewport: str) -> tuple[int, int]:
 
 
 def _wait_until() -> WaitUntil:
-    value = os.environ.get("CAPTURE_PAGE_WAIT_UNTIL", "").strip().lower()
+    value = os.environ.get("OMNIMODAL_CAPTURE_PAGE_WAIT_UNTIL", "").strip().lower()
     if value in {"commit", "domcontentloaded", "load", "networkidle"}:
         return cast(WaitUntil, value)
     return DEFAULT_WAIT_UNTIL
@@ -80,7 +80,7 @@ def _wait_until() -> WaitUntil:
 
 def _settle_ms() -> int:
     try:
-        return max(0, int(os.environ.get("CAPTURE_PAGE_SETTLE_MS", DEFAULT_SETTLE_MS)))
+        return max(0, int(os.environ.get("OMNIMODAL_CAPTURE_PAGE_SETTLE_MS", DEFAULT_SETTLE_MS)))
     except (TypeError, ValueError):
         return DEFAULT_SETTLE_MS
 
@@ -91,7 +91,7 @@ def _max_full_page_height() -> int:
             1,
             int(
                 os.environ.get(
-                    "CAPTURE_PAGE_MAX_FULL_PAGE_HEIGHT",
+                    "OMNIMODAL_CAPTURE_PAGE_MAX_FULL_PAGE_HEIGHT",
                     DEFAULT_MAX_FULL_PAGE_HEIGHT,
                 )
             ),
@@ -204,7 +204,7 @@ async def _screenshot(page: Page, output_dir: Path, index: int) -> Path:
 
 
 async def _launch_browser(playwright: Playwright) -> Browser:
-    channel = os.environ.get("CAPTURE_PAGE_BROWSER", "").strip().lower()
+    channel = os.environ.get("OMNIMODAL_CAPTURE_PAGE_BROWSER", "").strip().lower()
     if channel:
         return await playwright.chromium.launch(channel=channel, headless=True)
     if os.name == "nt":
@@ -223,10 +223,10 @@ async def _launch_browser(playwright: Playwright) -> Browser:
         raise CapturePageError(
             tr(
                 "无法启动浏览器。可先运行：uv run --project . --with playwright "
-                "playwright install chromium，或设置 CAPTURE_PAGE_BROWSER "
+                "playwright install chromium，或设置 OMNIMODAL_CAPTURE_PAGE_BROWSER "
                 "使用已安装的 Chrome/Edge 通道。",
                 "Cannot launch browser. Run: uv run --project . --with playwright "
-                "playwright install chromium, or set CAPTURE_PAGE_BROWSER to a "
+                "playwright install chromium, or set OMNIMODAL_CAPTURE_PAGE_BROWSER to a "
                 "Chrome/Edge channel.",
             )
         ) from exc
@@ -270,7 +270,7 @@ def _finalize_capture_dir(path: Path) -> None:
         shutil.rmtree(path, ignore_errors=True)
     stale_before = time.time() - 24 * 3600
     try:
-        for entry in Path(tempfile.gettempdir()).glob("read-image-capture-*"):
+        for entry in Path(tempfile.gettempdir()).glob("omnimodal-capture-*"):
             try:
                 if entry.is_dir() and entry.stat().st_mtime < stale_before:
                     shutil.rmtree(entry, ignore_errors=True)
@@ -294,7 +294,7 @@ async def _capture_page(
         raise CapturePageError(str(exc)) from exc
     timeout_ms = max(
         1000,
-        int(os.environ.get("CAPTURE_PAGE_TIMEOUT_SEC", DEFAULT_TIMEOUT_SEC)) * 1000,
+        int(os.environ.get("OMNIMODAL_CAPTURE_PAGE_TIMEOUT_SEC", DEFAULT_TIMEOUT_SEC)) * 1000,
     )
 
     cleanup_dir: Path | None = None
@@ -304,7 +304,7 @@ async def _capture_page(
         except ReadImageError as exc:
             raise CapturePageError(str(exc)) from exc
     else:
-        cleanup_dir = output_path = Path(tempfile.mkdtemp(prefix="read-image-capture-"))
+        cleanup_dir = output_path = Path(tempfile.mkdtemp(prefix="omnimodal-capture-"))
 
     try:
         try:
@@ -342,8 +342,8 @@ async def _capture_page(
             _finalize_capture_dir(cleanup_dir)
 
 
-@mcp.tool(annotations=EXTERNAL_SEND_ANNOTATIONS)
-async def capture_page(
+@mcp.tool(name="omnimodal_capture_page", annotations=EXTERNAL_SEND_ANNOTATIONS)
+async def omnimodal_capture_page(
     url: Annotated[str, Field(description="要打开并截图的网页 URL。")],
     actions: Annotated[
         list[dict[str, Any]] | None,

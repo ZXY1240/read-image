@@ -23,18 +23,20 @@ def _collect_annotations(mcp_servers: list[object]) -> dict[str, tuple[bool, boo
 
 
 def test_mcp_tool_annotations_are_explicit() -> None:
-    annotations = _collect_annotations(
-        [read_image_mcp, capture_page_mcp, windows_capture_mcp]
-    )
+    annotations = _collect_annotations([read_image_mcp, capture_page_mcp, windows_capture_mcp])
 
     assert annotations == {
-        "read_image": (False, True, False),
-        "read_images_batch": (False, True, False),
-        "read_video": (False, True, False),
-        "read_clipboard_image": (False, True, False),
-        "read_dragged_image": (False, True, False),
-        "read_dragged_video": (False, True, False),
-        "capture_page": (False, True, False),
-        "list_windows": (True, False, False),
-        "capture_windows": (False, False, False),
+        "omnimodal_recognize_image": (False, True, False),
+        "omnimodal_recognize_images_batch": (False, True, False),
+        "omnimodal_recognize_video": (False, True, False),
+        "omnimodal_recognize_videos_batch": (False, True, False),
+        "omnimodal_recognize_audio": (False, True, False),
+        "omnimodal_recognize_audios_batch": (False, True, False),
+        "omnimodal_read_clipboard_image": (False, True, False),
+        "omnimodal_read_dragged_image": (False, True, False),
+        "omnimodal_read_dragged_video": (False, True, False),
+        "omnimodal_read_dragged_audio": (False, True, False),
+        "omnimodal_capture_page": (False, True, False),
+        "omnimodal_list_windows": (True, False, False),
+        "omnimodal_capture_windows": (False, False, False),
     }

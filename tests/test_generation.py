@@ -99,11 +99,19 @@ def test_wait_for_result_success(monkeypatch):
 
 def test_wait_for_result_failed_raises(monkeypatch):
     fake = FakeClient()
-    fake.responses["get"] = FakeResponse(data={"output": {"task_status": "FAILED"}})
+    fake.responses["get"] = FakeResponse(
+        data={
+            "output": {
+                "task_status": "FAILED",
+                "code": "InvalidParameter",
+                "message": "resolution must be 720P or 1080P",
+            }
+        }
+    )
     monkeypatch.setattr("omnimodal.generation.http_client", fake)
 
     spec = GenerationSpec(endpoint="https://example.com", model="m", poll_interval=0)
-    with pytest.raises(Exception, match="FAILED"):
+    with pytest.raises(Exception, match="InvalidParameter.*720P or 1080P"):
         GenerationClient(spec).wait_for_result("t-1")
 
 

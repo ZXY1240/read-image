@@ -22,6 +22,7 @@ IGNORE_PATTERNS = shutil.ignore_patterns(
     "worktrees",
     ".env",
     ".env.local",
+    "config/local.json",
     "*.egg-info",
     "*.pyc",
 )
@@ -65,6 +66,15 @@ def main() -> int:
 
     output.mkdir(parents=True, exist_ok=True)
     shutil.copytree(source, output, dirs_exist_ok=True, ignore=IGNORE_PATTERNS)
+
+    for sensitive in (
+        output / ".env",
+        output / ".env.local",
+        output / ".coverage",
+        output / "config" / "local.json",
+    ):
+        if sensitive.is_file():
+            sensitive.unlink()
 
     config_path = output / "omnimodal" / "config.py"
     if config_path.is_file() and "HARDCODED_API_KEY" in config_path.read_text(encoding="utf-8"):

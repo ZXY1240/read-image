@@ -1,7 +1,7 @@
 {
   "name": "omnimodal",
-  "version": "2.0.0",
-  "description": "Multimodal plugin for Codex and Claude Code: recognize audio, images, and video through Doubao, GLM, or Qwen-compatible APIs, plus image, video, and speech generation.",
+  "version": "3.0.0",
+  "description": "Omnimodal plugin for Codex and Claude Code: recognize and generate images, video, and audio through Qwen/DashScope.",
   "homepage": "https://github.com/good-boy4069/Deepseek-omnimodal",
   "repository": "https://github.com/good-boy4069/Deepseek-omnimodal",
   "license": "MIT",
@@ -15,8 +15,6 @@
     "mcp",
     "read-video",
     "screenshot",
-    "doubao",
-    "glm",
     "qwen"
   ],
   "author": {
@@ -27,8 +25,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Omnimodal",
-    "shortDescription": "Recognize audio, images, and video and generate images, video, and speech with Doubao and Qwen-compatible APIs",
-    "longDescription": "Adds read_image, read_images_batch, read_video, capture_page, and native Windows capture_windows/list_windows MCP tools.",
+    "shortDescription": "Recognize and generate images, video, and audio with Qwen/DashScope",
+    "longDescription": "Adds omnimodal_recognize_*, omnimodal_generate_*, omnimodal_capture_page, and native Windows omnimodal_capture_windows/omnimodal_list_windows MCP tools.",
     "developerName": "ZXY1240",
     "composerIcon": "./assets/icon.svg",
     "websiteURL": "https://github.com/good-boy4069/Deepseek-omnimodal",
@@ -36,7 +34,8 @@
     "termsOfServiceURL": "https://github.com/good-boy4069/Deepseek-omnimodal/blob/main/LICENSE",
     "category": "Productivity",
     "capabilities": [
-      "Read"
+      "Read",
+      "Write"
     ],
     "defaultPrompt": [
       "Read this local image and extract the requested content."

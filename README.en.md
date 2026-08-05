@@ -1,95 +1,92 @@
-# Omnimodal v2.1.0
+# Omnimodal v3.0.0
 
-> **Deepseek-omnimodal is an MCP plugin that gives text-only main models (DeepSeek etc.) full multimodal abilities** — see images/videos, hear audio, transcribe speech, and generate images/videos/speech. It solves "the main model cannot see images, hear audio, or generate media".
-
-> This project was formerly named read-image and has been upgraded to omnimodal (full multimodality).
-
-omnimodal gives text-only models vision support for local images, batches, videos, web pages, and Windows screenshots. It defaults to Qwen3-VL-Flash (DashScope compatible mode) and supports GLM and Doubao through OpenAI-compatible providers.
-
-[English](README.en.md) | [中文](README.md)
-
-## Known Limitation
-
-Claude Desktop does not support direct recognition of images or videos dragged from other windows. Dragged media is embedded in the message and is not written to a scannable directory, so text-only models only see `[Unsupported Image]`.
-
-Recommended workflow:
-1. Copy the image with `Ctrl+C` after dragging it in, then call `read_clipboard_image`.
-2. Or save the file to a known path and call `read_image` / `read_video` with that path.
+Omnimodal gives text-only models multimodal capabilities: recognize images, video, and audio, and generate images, video, and audio through Qwen/DashScope.
 
 ## Tools
 
-- `read_image(image, task, mode)`: local path, `data:` URL, or base64 image.
-- `read_clipboard_image(task, mode)`: read the Windows clipboard image.
-- `read_images_batch(images, task, mode, max_workers)`: parallel batch image reading.
-- `read_video(video, task, mode)`: local video or HTTP(S) video URL.
-- `read_dragged_image(task, mode, path)` / `read_dragged_video(task, mode, path)`: limited scanning for clients that write dragged files to disk. Not supported on Claude Desktop.
-- `capture_page(...)`: Playwright interactive webpage screenshots.
-- `list_windows()` / `capture_windows(...)`: native Windows screenshots.
+### Recognition
 
-## Installation
+- `omnimodal_recognize_image(image, task, mode)`
+- `omnimodal_recognize_images_batch(images, task, mode, max_workers)`
+- `omnimodal_recognize_video(video, task, mode)`
+- `omnimodal_recognize_videos_batch(videos, task, mode, max_workers)`
+- `omnimodal_recognize_audio(audio, task, mode)`
+- `omnimodal_recognize_audios_batch(audios, task, mode, max_workers)`
+- `omnimodal_read_clipboard_image(task, mode)`
+- `omnimodal_read_dragged_image(task, mode, path)`
+- `omnimodal_read_dragged_video(task, mode, path)`
+- `omnimodal_read_dragged_audio(task, mode, path)`
 
-The plugin uses `uv` and exposes three MCP servers:
+### Generation
 
-- `read-image`
-- `capture-page`
-- `windows-capture`
+- `omnimodal_generate_image(prompt, tier, size, n, wait, confirm)`
+- `omnimodal_generate_video(prompt, tier, duration, resolution, wait, confirm)`
+- `omnimodal_generate_video_from_image(image, prompt, tier, duration, resolution, wait, confirm)`
+- `omnimodal_edit_video(video, prompt, tier, duration, resolution, reference_image, wait, confirm)`
+- `omnimodal_generate_audio(text, voice, tier, kind, preview_text, wait, confirm)`
+- `omnimodal_transcribe_audio(audio, language, wait)`
+- `omnimodal_get_task_result(task_id)`
 
-### Codex
+Generation tools only call paid APIs when `confirm=true`. Results are saved to `~/.omnimodal/outputs`.
 
-Enable the plugin in Codex. The local `.env` file can store your API key:
+Video generation resolution supports `720P/1080P`; `480P` is upgraded to `720P`.
+For `omnimodal_generate_audio`, `kind` supports `tts`, `clone`, `voice_design`, and `music`.
+`music` uses `fun-music-v1`, which is an invite-only Alibaba Cloud model and may return `AccessDenied` until enabled.
+
+### Capture
+
+- `omnimodal_capture_page(url, actions, viewport, output_dir)`
+- `omnimodal_list_windows()`
+- `omnimodal_capture_windows(mode, window, output_dir)`
+
+## Install
+
+Requires Python 3.10+ and `uv`.
 
 ```powershell
-READ_IMAGE_API_KEY=your-dashscope-api-key
-READ_IMAGE_PROVIDER=openai_compatible
-READ_IMAGE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-READ_IMAGE_MODEL=qwen3-vl-flash
+git clone https://github.com/good-boy4069/Deepseek-omnimodal.git
+cd Deepseek-omnimodal
+Copy-Item .env.example .env
 ```
 
-### Claude Code
-
-Persistent local install:
+Set `OMNIMODAL_API_KEY` in `.env`. For Claude Code:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File <plugin-root>\scripts\install_claude_plugin.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\install_claude_plugin.ps1
 ```
 
-Session-only testing:
-
-```powershell
-claude --plugin-dir <plugin-root>
-```
+Restart Claude Code after installation.
 
 ## Configuration
 
-Key environment variables:
+- `config/model_catalog.json`: models, capabilities, pricing, timeouts.
+- `config/profiles.json`: recognition profile defaults.
+- `config/local.json`: local overrides, ignored by Git.
 
-- `READ_IMAGE_API_KEY` / `ARK_API_KEY` / `DOUBAO_API_KEY` / `VISION_API_KEY`
-- `READ_IMAGE_PROVIDER`: `openai_compatible` (default), `doubao`, or `auto`
-- `READ_IMAGE_BASE_URL`
-- `READ_IMAGE_MODEL`
-- `READ_IMAGE_CACHE_USE_TASK` (default enabled)
-- `READ_IMAGE_CACHE_TTL_SEC` (default 300)
-- `READ_IMAGE_EXTREME_ASPECT_RATIO_LIMIT`
-- `READ_DRAG_WINDOW_MIN`
-- `READ_DRAG_PATTERNS`
-- `READ_DRAG_DIRS`
+Important environment variables:
 
-See `.env.example` for the full list.
+- `OMNIMODAL_API_KEY`
+- `OMNIMODAL_BASE_URL`
+- `OMNIMODAL_IMAGE_MODEL`
+- `OMNIMODAL_VIDEO_MODEL`
+- `OMNIMODAL_AUDIO_MODEL_STANDARD`
+- `OMNIMODAL_AUDIO_MODEL_PRO`
+- `OMNIMODAL_VIDEO_GEN_MODEL_STANDARD_I2V`
+- `OMNIMODAL_VIDEO_GEN_MODEL_MAX_I2V`
+- `OMNIMODAL_VIDEO_GEN_MODEL_EDIT`
+- `OMNIMODAL_OCR_MODEL`
+- `OMNIMODAL_ASR_MODEL`
+- `OMNIMODAL_IMAGE_GEN_TIMEOUT_SEC`
+- `OMNIMODAL_VIDEO_GEN_TIMEOUT_SEC`
+- `OMNIMODAL_AUDIO_GEN_TIMEOUT_SEC`
+- `OMNIMODAL_MAX_VIDEO_DURATION`
+- `OMNIMODAL_GENERATION_OUTPUT_DIR`
+- `OMNIMODAL_ALLOWED_OUTPUT_DIRS`
+- `OMNIMODAL_ALLOW_PRIVATE_URLS`
 
-## Development
+## Security
 
-```powershell
-uv sync --extra dev
-uv run pytest
-uv run ruff check .
-uv run mypy omnimodal
-```
-
-## Privacy and Terms
-
-- [Privacy Policy](PRIVACY.md)
-- [Terms of Use](TERMS.md)
-
-## License
-
-MIT License. Copyright (c) 2026 ZXY1240
+- API keys are only read from `.env` or system environment variables.
+- Remote URLs block private, local, and cloud metadata addresses by default.
+- Logs redact API keys, query parameters, Base64, and media bodies.
+- Generation tools require explicit cost confirmation.

@@ -16,7 +16,7 @@ New-Item -ItemType Directory -Path $target -Force | Out-Null
 
 $sourceEnv = Join-Path $repo ".env"
 $targetEnv = Join-Path $target ".env"
-$envBackup = Join-Path $env:TEMP "read-image-clipboard-env-backup"
+$envBackup = Join-Path $env:TEMP "omnimodal-clipboard-env-backup"
 if ((Test-Path -LiteralPath $targetEnv) -and -not (Test-Path -LiteralPath $sourceEnv)) {
     Copy-Item -LiteralPath $targetEnv -Destination $envBackup -Force
 }

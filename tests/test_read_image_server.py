@@ -21,14 +21,14 @@ pytestmark = pytest.mark.usefixtures("fake_api_key")
 def test_batch_timeout_helper_uses_profile_plus_buffer(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.delenv("READ_IMAGE_BATCH_TIMEOUT_SEC", raising=False)
+    monkeypatch.delenv("OMNIMODAL_BATCH_TIMEOUT_SEC", raising=False)
     assert _batch_timeout_sec("standard") == profile_for_mode("standard").timeout_sec + 30
 
 
 def test_batch_timeout_helper_uses_env_override(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("READ_IMAGE_BATCH_TIMEOUT_SEC", "7")
+    monkeypatch.setenv("OMNIMODAL_BATCH_TIMEOUT_SEC", "7")
     assert _batch_timeout_sec("standard") == 7
 
 
@@ -72,7 +72,7 @@ def test_batch_times_out_individual_image(
         return "late"
 
     monkeypatch.setattr(read_image_server, "_run_image_with_cache", slow_call)
-    monkeypatch.setenv("READ_IMAGE_BATCH_TIMEOUT_SEC", "1")
+    monkeypatch.setenv("OMNIMODAL_BATCH_TIMEOUT_SEC", "1")
 
     started = time.monotonic()
     with pytest.raises(ReadImageError) as exc_info:
@@ -146,7 +146,7 @@ def test_batch_does_not_misreport_slow_but_successful_result(
         return "late-but-ok"
 
     monkeypatch.setattr(read_image_server, "_run_image_with_cache", slow_call)
-    monkeypatch.setenv("READ_IMAGE_BATCH_TIMEOUT_SEC", "3")
+    monkeypatch.setenv("OMNIMODAL_BATCH_TIMEOUT_SEC", "3")
     result = read_image_server.read_images_batch(
         ["slow.png"],
         "task",

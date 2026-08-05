@@ -98,13 +98,17 @@ def fake(monkeypatch: pytest.MonkeyPatch) -> FakeClient:
 
 # ---- _audio_content_item 构造 ----
 
+
 def test_audio_content_item_http_url_passes_url() -> None:
     item = audio_processing._audio_content_item(
         "https://example.com/a.mp3", audio_processing.OMNI_MODEL
     )
     assert item == {
         "type": "input_audio",
-        "input_audio": {"url": "https://example.com/a.mp3"},
+        "input_audio": {
+            "data": "https://example.com/a.mp3",
+            "format": "mp3",
+        },
     }
 
 
@@ -115,7 +119,10 @@ def test_audio_content_item_oss_url_passes_through(tmp_path) -> None:
     )
     assert item == {
         "type": "input_audio",
-        "input_audio": {"url": "oss://dashscope-instant/x/a.mp3"},
+        "input_audio": {
+            "data": "oss://dashscope-instant/x/a.mp3",
+            "format": "mp3",
+        },
     }
 
 
@@ -133,10 +140,11 @@ def test_audio_content_item_small_local_file_uses_base64(
     item = audio_processing._audio_content_item(str(audio), audio_processing.OMNI_MODEL)
     assert item["type"] == "input_audio"
     data = item["input_audio"]["data"]
-    assert data.startswith("data:;base64,")
+    assert item["input_audio"]["format"] == "mp3"
     import base64
 
-    assert data[len("data:;base64,"):] == base64.b64encode(b"\xff\xf3tiny-audio").decode("ascii")
+    expected_data = base64.b64encode(b"\xff\xf3tiny-audio").decode("ascii")
+    assert data == f"data:audio/mpeg;base64,{expected_data}"
     assert uploaded == []  # 未触发上传
 
 
@@ -149,18 +157,23 @@ def test_audio_content_item_large_local_file_uploads(
     uploaded: list[str] = []
     monkeypatch.setattr(
         "omnimodal.audio_processing.get_temporary_url",
-        lambda path, model, content_type: uploaded.append(path)
-        or "oss://dashscope-instant/uploaded/big.mp3",
+        lambda path, model, content_type: (
+            uploaded.append(path) or "oss://dashscope-instant/uploaded/big.mp3"
+        ),
     )
     item = audio_processing._audio_content_item(str(audio), audio_processing.OMNI_MODEL)
     assert uploaded == [str(audio)]
     assert item == {
         "type": "input_audio",
-        "input_audio": {"url": "oss://dashscope-instant/uploaded/big.mp3"},
+        "input_audio": {
+            "data": "oss://dashscope-instant/uploaded/big.mp3",
+            "format": "mp3",
+        },
     }
 
 
 # ---- analyze_audio payload ----
+
 
 def test_analyze_audio_builds_payload_with_base64(fake: FakeClient, tmp_path) -> None:
     audio = tmp_path / "clip.mp3"
@@ -178,20 +191,24 @@ def test_analyze_audio_builds_payload_with_base64(fake: FakeClient, tmp_path) ->
     content = body["messages"][1]["content"]
     assert content[0] == {"type": "text", "text": "说了什么"}
     assert content[1]["type"] == "input_audio"
-    assert content[1]["input_audio"]["data"].startswith("data:;base64,")
+    assert content[1]["input_audio"]["format"] == "mp3"
+    import base64
+
+    assert content[1]["input_audio"]["data"] == (
+        f"data:audio/mpeg;base64,{base64.b64encode(b'tiny').decode('ascii')}"
+    )
 
 
 def test_analyze_audio_pro_tier_uses_omni_plus(fake: FakeClient, tmp_path) -> None:
     audio = tmp_path / "clip.mp3"
     audio.write_bytes(b"tiny")
-    fake.responses["stream"] = FakeStream(
-        _sse({"choices": [{"delta": {"content": "ok"}}]})
-    )
+    fake.responses["stream"] = FakeStream(_sse({"choices": [{"delta": {"content": "ok"}}]}))
     audio_processing.analyze_audio(str(audio), tier="pro")
     assert fake.streams[0]["json"]["model"] == "qwen3.5-omni-plus"
 
 
 # ---- transcribe_audio (paraformer async) ----
+
 
 def test_transcribe_wait_false_returns_task_id(fake: FakeClient, tmp_path) -> None:
     audio = tmp_path / "clip.mp3"
@@ -222,9 +239,7 @@ def test_transcribe_waits_and_returns_text(fake: FakeClient, tmp_path) -> None:
     assert result["text"] == "第一句\n第二句"
 
 
-def test_transcribe_succeeded_but_empty_results_raises(
-    fake: FakeClient, tmp_path
-) -> None:
+def test_transcribe_succeeded_but_empty_results_raises(fake: FakeClient, tmp_path) -> None:
     audio = tmp_path / "clip.mp3"
     audio.write_bytes(b"tiny")
     fake.responses["post"] = FakeResponse(
@@ -251,8 +266,11 @@ def test_asr_task_status_extracts_text(fake: FakeClient) -> None:
 
 
 def test_asr_task_status_pending(fake: FakeClient) -> None:
-    fake.responses["get"] = FakeResponse(
-        data={"output": {"task_status": "RUNNING"}}
-    )
+    fake.responses["get"] = FakeResponse(data={"output": {"task_status": "RUNNING"}})
     result = audio_processing.asr_task_status("asr-1")
     assert result == {"task_id": "asr-1", "status": "RUNNING"}
+
+
+def test_audio_should_transcribe_long_audio() -> None:
+    assert audio_processing.audio_should_transcribe("long.mp3", duration_sec=600) is True
+    assert audio_processing.audio_should_transcribe("short.mp3", duration_sec=30) is False

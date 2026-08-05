@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import mimetypes
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +12,12 @@ import pytest
 from PIL import Image
 
 from omnimodal import api
-from omnimodal.config import DEFAULT_IMAGE_FORMAT, DEFAULT_MAX_DIMENSION, image_format
+from omnimodal.config import (
+    DEFAULT_IMAGE_FORMAT,
+    DEFAULT_MAX_DIMENSION,
+    api_key,
+    image_format,
+)
 from omnimodal.errors import ReadImageError, VisionMediaError
 from omnimodal.media import (
     MAX_VIDEO_CONVERSION_DEPTH,
@@ -21,7 +27,7 @@ from omnimodal.media import (
     video_download_max_bytes,
     video_max_bytes,
 )
-from omnimodal.providers import doubao as provider_doubao
+from omnimodal.providers.openai_compatible import OpenAICompatibleProvider
 from omnimodal.video_processing import (
     _analyze_local_video,
     _analyze_local_video_files,
@@ -38,6 +44,76 @@ from omnimodal.video_processing import (
 pytestmark = pytest.mark.usefixtures("fake_api_key")
 
 
+class FakeFilesProvider(OpenAICompatibleProvider):
+    """Test-only provider that mimics the legacy DashScope/Ark Files API."""
+
+    provider_name = "fake_files"
+    supports_video_files = True
+
+    def build_payload(
+        self,
+        kind: str,
+        content_url: str,
+        task: str,
+        mode: str | None,
+        file_id: str | None = None,
+    ) -> dict[str, Any]:
+        if file_id is not None:
+            from omnimodal.profiles import profile_for_mode
+
+            profile = profile_for_mode(mode)
+            return {
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": profile.video_prompt},
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": task},
+                            {
+                                "type": "video_url",
+                                "video_url": {"file_id": file_id},
+                            },
+                        ],
+                    },
+                ],
+            }
+        return super().build_payload(kind, content_url, task, mode, file_id=None)
+
+    def upload_video_file(
+        self,
+        path: Path | str,
+        timeout_sec: int | None = None,
+    ) -> str:
+        video_path = Path(path)
+        mime = mimetypes.guess_type(video_path.name)[0] or "video/mp4"
+        with video_path.open("rb") as file_handle:
+            response = self._client.post(
+                f"{self.base_url}/files",
+                headers={"Authorization": f"Bearer {api_key()}"},
+                data={"purpose": "user_data"},
+                files={"file": (video_path.name, file_handle, mime)},
+                timeout=timeout_sec or 30,
+            )
+        if response.status_code >= 400:
+            raise ReadImageError(f"upload failed: {response.text[:200]}")
+        payload = json.loads(response.text)
+        return str(payload.get("id") or payload.get("file_id"))
+
+    def delete_video_file(
+        self,
+        file_id: str,
+        timeout_sec: int = 30,
+        retries: int = 2,
+    ) -> bool:
+        response = self._client.delete(
+            f"{self.base_url}/files/{file_id}",
+            headers={"Authorization": f"Bearer {api_key()}"},
+            timeout=timeout_sec,
+        )
+        return response.status_code < 400
+
+
 def _mock_http_client(monkeypatch: pytest.MonkeyPatch, handler: Any) -> httpx.Client:
     client = httpx.Client(transport=httpx.MockTransport(handler))
     monkeypatch.setattr(api, "http_client", client)
@@ -47,14 +123,13 @@ def _mock_http_client(monkeypatch: pytest.MonkeyPatch, handler: Any) -> httpx.Cl
 def _mock_video_api(monkeypatch: pytest.MonkeyPatch, handler: Any) -> httpx.Client:
     client = httpx.Client(transport=httpx.MockTransport(handler))
     monkeypatch.setattr(api, "http_client", client)
-    # 视频 files API 是豆包语义，显式用豆包 provider（默认 provider 是 qwen）
     monkeypatch.setattr(
         api,
         "default_client",
         api.VisionClient(
-            provider=provider_doubao.DoubaoProvider(
+            provider=FakeFilesProvider(
                 "https://ark.cn-beijing.volces.com/api/v3",
-                "doubao-seed-2-1-turbo-260628",
+                "fake-video-model",
             ),
             client=client,
         ),
@@ -85,7 +160,7 @@ def test_prepare_image_returns_bytes_and_mime_tuple(tmp_path: Path) -> None:
 
 
 def test_image_format_defaults_to_auto(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("READ_IMAGE_FORMAT", raising=False)
+    monkeypatch.delenv("OMNIMODAL_IMAGE_FORMAT", raising=False)
     assert DEFAULT_IMAGE_FORMAT == "auto"
     assert DEFAULT_MAX_DIMENSION == 2048
     assert image_format() == "auto"
@@ -114,7 +189,7 @@ def test_prepare_image_jpeg_photo_remains_jpeg(tmp_path: Path) -> None:
 def test_prepare_image_explicit_jpeg_policy_returns_jpeg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("READ_IMAGE_FORMAT", "jpeg")
+    monkeypatch.setenv("OMNIMODAL_IMAGE_FORMAT", "jpeg")
     image = Image.new("RGB", (20, 10), "red")
     path = tmp_path / "sample.png"
     image.save(path)
@@ -179,7 +254,7 @@ def test_prepare_image_preserves_bmp(tmp_path: Path) -> None:
 def test_prepare_image_resizes_to_max_dimension(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("READ_IMAGE_MAX_DIMENSION", "32")
+    monkeypatch.setenv("OMNIMODAL_MAX_DIMENSION", "32")
     image = Image.new("RGB", (64, 16), "red")
     path = tmp_path / "large.png"
     image.save(path)
@@ -236,7 +311,7 @@ def test_prepare_image_variants_slices_extreme_tall_image(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("READ_IMAGE_MAX_DIMENSION", "1024")
+    monkeypatch.setenv("OMNIMODAL_MAX_DIMENSION", "1024")
     path = tmp_path / "tall.png"
     Image.new("RGB", (48, 4032), "white").save(path)
     variants = prepare_image_variants(str(path))
@@ -251,7 +326,7 @@ def test_prepare_image_variants_can_disable_extreme_slicing(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("READ_IMAGE_EXTREME_ASPECT_RATIO_LIMIT", "0")
+    monkeypatch.setenv("OMNIMODAL_EXTREME_ASPECT_RATIO_LIMIT", "0")
     path = tmp_path / "tall.png"
     Image.new("RGB", (48, 4032), "white").save(path)
     variants = prepare_image_variants(str(path))
@@ -259,12 +334,12 @@ def test_prepare_image_variants_can_disable_extreme_slicing(
 
 
 def test_video_max_bytes_uses_env(monkeypatch) -> None:
-    monkeypatch.setenv("READ_VIDEO_MAX_MB", "7")
+    monkeypatch.setenv("OMNIMODAL_VIDEO_MAX_MB", "7")
     assert video_max_bytes() == 7 * 1024 * 1024
 
 
 def test_video_base64_max_bytes_uses_env(monkeypatch) -> None:
-    monkeypatch.setenv("READ_VIDEO_BASE64_MAX_MB", "7")
+    monkeypatch.setenv("OMNIMODAL_VIDEO_BASE64_MAX_MB", "7")
     assert video_base64_max_bytes() == 7 * 1024 * 1024
 
 
@@ -681,7 +756,7 @@ def test_local_video_compresses_to_base64_cap_before_fallback(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("READ_VIDEO_BASE64_MAX_MB", "1")
+    monkeypatch.setenv("OMNIMODAL_VIDEO_BASE64_MAX_MB", "1")
     video = tmp_path / "tiny.mp4"
     video.write_bytes(b"x" * (1024 * 1024 + 1))
     captured: dict[str, Any] = {}
@@ -723,8 +798,8 @@ def test_local_video_raises_friendly_error_when_base64_cap_cannot_fit(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("READ_VIDEO_BASE64_MAX_MB", "1")
-    monkeypatch.setenv("READ_IMAGE_LANGUAGE", "en")
+    monkeypatch.setenv("OMNIMODAL_VIDEO_BASE64_MAX_MB", "1")
+    monkeypatch.setenv("OMNIMODAL_LANGUAGE", "en")
     video = tmp_path / "tiny.mp4"
     video.write_bytes(b"x" * (1024 * 1024 + 1))
     compressed = False

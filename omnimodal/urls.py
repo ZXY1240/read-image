@@ -81,9 +81,9 @@ def validate_remote_url(url: str, allow_private: bool | None = None) -> str:
             raise ReadImageError(
                 tr(
                     "远程 URL 指向本机、内网或保留地址，已阻止。"
-                    "如确需访问，可设置 READ_IMAGE_ALLOW_PRIVATE_URLS=1。",
+                    "如确需访问，可设置 OMNIMODAL_ALLOW_PRIVATE_URLS=1。",
                     "Remote URL points to a local, private, or reserved address "
-                    "and was blocked. Set READ_IMAGE_ALLOW_PRIVATE_URLS=1 to allow it.",
+                    "and was blocked. Set OMNIMODAL_ALLOW_PRIVATE_URLS=1 to allow it.",
                 )
             )
     return raw

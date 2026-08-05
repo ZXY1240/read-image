@@ -8,11 +8,10 @@ from pathlib import Path
 from PIL import Image, ImageOps
 
 from omnimodal.config import (
-    DEFAULT_JPEG_QUALITY,
-    DEFAULT_MAX_DIMENSION,
-    env_int,
     extreme_aspect_ratio_limit,
     image_format,
+    jpeg_quality,
+    max_dimension,
 )
 from omnimodal.errors import ReadImageError, tr, trf
 
@@ -247,13 +246,13 @@ def _slice_extreme_image(image: Image.Image) -> list[Image.Image]:
     if short_side <= 0 or long_side / short_side <= limit:
         return [image]
 
-    max_dimension = max(
+    max_dim = max(
         1,
-        env_int("READ_IMAGE_MAX_DIMENSION", DEFAULT_MAX_DIMENSION),
+        max_dimension(),
     )
     segment_len = max(
         1,
-        round(max_dimension * short_side / EXTREME_SLICE_MIN_DIMENSION),
+        round(max_dim * short_side / EXTREME_SLICE_MIN_DIMENSION),
     )
     overlap = min(EXTREME_SLICE_OVERLAP, max(1, segment_len // 10))
     step = max(1, segment_len - overlap)
@@ -265,14 +264,14 @@ def _slice_extreme_image(image: Image.Image) -> list[Image.Image]:
             starts.append(width - segment_len)
         for x in starts:
             segment = image.crop((x, 0, min(x + segment_len, width), height))
-            slices.append(_resize_slice(segment, max_dimension))
+            slices.append(_resize_slice(segment, max_dim))
     else:
         starts = list(range(0, height, step))
         if starts[-1] + segment_len < height:
             starts.append(height - segment_len)
         for y in starts:
             segment = image.crop((0, y, width, min(y + segment_len, height)))
-            slices.append(_resize_slice(segment, max_dimension))
+            slices.append(_resize_slice(segment, max_dim))
     return slices
 
 
@@ -281,15 +280,12 @@ def _prepare_image_from_pil(
     original_format: str,
     animated: bool,
 ) -> tuple[bytes, str]:
-    max_dimension = max(
+    max_dim = max(
         1,
-        env_int("READ_IMAGE_MAX_DIMENSION", DEFAULT_MAX_DIMENSION),
+        max_dimension(),
     )
-    image = _resize_image(image, max_dimension)
-    quality = min(
-        100,
-        max(1, env_int("READ_IMAGE_JPEG_QUALITY", DEFAULT_JPEG_QUALITY)),
-    )
+    image = _resize_image(image, max_dim)
+    quality = jpeg_quality()
 
     if image_format() != "jpeg" and original_format.upper() in _LOSSLESS_FORMATS:
         image_format_name = original_format.upper()

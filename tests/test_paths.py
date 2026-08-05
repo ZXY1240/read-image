@@ -18,7 +18,7 @@ def test_allows_temp_and_workspace_dirs() -> None:
 def test_rejects_output_outside_allowed_roots(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.delenv("READ_IMAGE_ALLOWED_OUTPUT_DIRS", raising=False)
+    monkeypatch.delenv("OMNIMODAL_ALLOWED_OUTPUT_DIRS", raising=False)
     forbidden = Path.home() / "read-image-forbidden-output"
     with pytest.raises(ReadImageError):
         ensure_allowed_output_dir(str(forbidden))
@@ -29,7 +29,7 @@ def test_allows_explicit_configured_root(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     allowed = tmp_path / "allowed"
-    monkeypatch.setenv("READ_IMAGE_ALLOWED_OUTPUT_DIRS", str(allowed))
+    monkeypatch.setenv("OMNIMODAL_ALLOWED_OUTPUT_DIRS", str(allowed))
     result = ensure_allowed_output_dir(str(allowed / "nested"))
     assert result == (allowed / "nested").resolve()
 

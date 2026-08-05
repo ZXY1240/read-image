@@ -20,7 +20,7 @@ def test_capture_page_creates_real_screenshot(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("READ_IMAGE_ALLOW_PRIVATE_URLS", "1")
+    monkeypatch.setenv("OMNIMODAL_ALLOW_PRIVATE_URLS", "1")
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import logging
-import os
 import sys
 
+from omnimodal.config import log_level
 
-def configure_logging(name: str = "read-image") -> logging.Logger:
-    level_name = os.environ.get("READ_IMAGE_LOG_LEVEL", "INFO").upper()
+
+def configure_logging(name: str = "omnimodal") -> logging.Logger:
+    level_name = log_level().upper()
     level = getattr(logging, level_name, logging.INFO)
     logger = logging.getLogger(name)
     logger.setLevel(level)

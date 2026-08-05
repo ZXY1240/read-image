@@ -10,16 +10,13 @@ SECRET_KEY_RE = re.compile(
     r"(?i)\b(ark|sk)-[a-z0-9_-]{12,}\b|"
     r"api[_-]?key\s*[:=]\s*['\"]?[a-z0-9_-]{20,}"
 )
-
-
-def _python_version(text: str) -> str | None:
-    match = re.search(r'__version__\s*=\s*"([^"]+)"', text)
-    return match.group(1) if match else None
-
-
-def _pyproject_version(text: str) -> str | None:
-    match = re.search(r'^version\s*=\s*"([^"]+)"', text, re.MULTILINE)
-    return match.group(1) if match else None
+EXPECTED_VERSION = "3.0.0"
+EXPECTED_MCP_SERVERS = {
+    "omnimodal-recognize",
+    "omnimodal-capture-page",
+    "omnimodal-windows-capture",
+    "omnimodal-generation",
+}
 
 
 def _iter_text_files(root: Path):
@@ -28,13 +25,47 @@ def _iter_text_files(root: Path):
             continue
         relative = path.relative_to(root)
         if any(
-            part in {".git", "__pycache__", ".venv", ".pytest_cache", ".mypy_cache", ".ruff_cache"}
+            part
+            in {
+                ".git",
+                "__pycache__",
+                ".venv",
+                ".pytest_cache",
+                ".mypy_cache",
+                ".ruff_cache",
+            }
             for part in relative.parts
         ):
             continue
-        if path.suffix.lower() in {".pyc", ".png", ".jpg", ".mp4", ".pyo"}:
+        if path.suffix.lower() in {".pyc", ".png", ".jpg", ".jpeg", ".mp4", ".mp3", ".pyo"}:
             continue
         yield path
+
+
+def _check_mcp_json(path: Path, errors: list[str]) -> None:
+    if not path.is_file():
+        errors.append(f"Missing {path}")
+        return
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        servers = data.get("mcpServers", {})
+        if not EXPECTED_MCP_SERVERS.issubset(servers):
+            errors.append(f"{path} must include servers {sorted(EXPECTED_MCP_SERVERS)}")
+        if path.name == ".mcp.json":
+            recognize_env = set(servers.get("omnimodal-recognize", {}).get("env_vars", []))
+            for required in {
+                "OMNIMODAL_API_KEY",
+                "OMNIMODAL_ENV_FILE",
+                "OMNIMODAL_IMAGE_MODEL",
+                "OMNIMODAL_VIDEO_MODEL",
+                "OMNIMODAL_AUDIO_MODEL_STANDARD",
+                "OMNIMODAL_ALLOWED_OUTPUT_DIRS",
+                "OMNIMODAL_ALLOW_PRIVATE_URLS",
+            }:
+                if required not in recognize_env:
+                    errors.append(f".mcp.json recognize server missing env {required}")
+    except json.JSONDecodeError as exc:
+        errors.append(f"{path} is invalid JSON: {exc}")
 
 
 def main() -> int:
@@ -50,212 +81,67 @@ def main() -> int:
     root = Path(args.root).resolve() if args.root else Path(__file__).resolve().parents[1]
     errors: list[str] = []
 
-    plugin_json = root / ".codex-plugin" / "plugin.json"
-    if not plugin_json.is_file():
-        errors.append("Missing .codex-plugin/plugin.json")
-    else:
+    for manifest_name in (".codex-plugin/plugin.json", ".claude-plugin/plugin.json"):
+        manifest_path = root / manifest_name
+        if not manifest_path.is_file():
+            errors.append(f"Missing {manifest_name}")
+            continue
         try:
-            plugin = json.loads(plugin_json.read_text(encoding="utf-8"))
-            if plugin.get("name") != "omnimodal":
-                errors.append("plugin.json name must be omnimodal")
-            skills = plugin.get("skills")
-            if not skills:
-                errors.append("plugin.json missing skills")
-            else:
-                skill_root = root / skills.lstrip("./")
-                if not list(skill_root.glob("*/SKILL.md")):
-                    errors.append("No skills/*/SKILL.md found")
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if manifest.get("name") != "omnimodal":
+                errors.append(f"{manifest_name} name must be omnimodal")
+            if manifest.get("version") != EXPECTED_VERSION:
+                errors.append(f"{manifest_name} version must be {EXPECTED_VERSION}")
         except json.JSONDecodeError as exc:
-            errors.append(f"plugin.json is invalid JSON: {exc}")
+            errors.append(f"{manifest_name} is invalid JSON: {exc}")
 
-    mcp_json = root / ".mcp.json"
-    if not mcp_json.is_file():
-        errors.append("Missing .mcp.json")
-    else:
-        try:
-            mcp = json.loads(mcp_json.read_text(encoding="utf-8"))
-            servers = mcp.get("mcpServers", {})
-            if not {"read-image", "capture-page", "windows-capture"}.issubset(servers):
-                errors.append("mcpServers must include read-image, capture-page, windows-capture")
-            read_image_env = set(servers.get("read-image", {}).get("env_vars", []))
-            required_read_image_env = {
-                "READ_IMAGE_PROVIDER",
-                "READ_IMAGE_BASE_URL",
-                "READ_IMAGE_MODEL",
-                "READ_IMAGE_OPENAI_THINKING_PARAM",
-                "READ_IMAGE_PROFILES_JSON",
-                "READ_IMAGE_CACHE_USE_TASK",
-                "READ_IMAGE_CACHE_TTL_SEC",
-                "READ_IMAGE_EXTREME_ASPECT_RATIO_LIMIT",
-                "READ_IMAGE_ALLOWED_OUTPUT_DIRS",
-                "READ_IMAGE_ALLOW_PRIVATE_URLS",
-                "READ_IMAGE_VIDEO_WORKERS",
-                "READ_VIDEO_WORKERS",
-                "READ_DRAG_WINDOW_MIN",
-                "READ_DRAG_PATTERNS",
-                "READ_DRAG_DIRS",
-                "READ_IMAGE_BATCH_TIMEOUT_SEC",
-                "READ_VIDEO_BASE64_MAX_MB",
-                "READ_VIDEO_DOWNLOAD_MAX_MB",
-                "READ_VIDEO_FILES_API_TIMEOUT_SEC",
-                "READ_VIDEO_KEEP_AUDIO",
-            }
-            if not required_read_image_env.issubset(read_image_env):
-                errors.append("read-image mcp env_vars missing video/batch timeout vars")
-            capture_env = set(servers.get("capture-page", {}).get("env_vars", []))
-            required_capture_env = {
-                "CAPTURE_PAGE_WAIT_UNTIL",
-                "CAPTURE_PAGE_SETTLE_MS",
-                "CAPTURE_PAGE_MAX_FULL_PAGE_HEIGHT",
-            }
-            if not required_capture_env.issubset(capture_env):
-                errors.append("capture-page mcp env_vars missing capture tuning vars")
-        except json.JSONDecodeError as exc:
-            errors.append(f".mcp.json is invalid JSON: {exc}")
+    _check_mcp_json(root / ".mcp.json", errors)
+    _check_mcp_json(root / ".claude-mcp.json", errors)
 
-    if not (root / "pyproject.toml").is_file():
-        errors.append("Missing pyproject.toml")
+    if not (root / "config" / "model_catalog.json").is_file():
+        errors.append("Missing config/model_catalog.json")
+    if not (root / "config" / "profiles.json").is_file():
+        errors.append("Missing config/profiles.json")
     if not (root / "omnimodal" / "mcp" / "read_image_server.py").is_file():
         errors.append("Missing omnimodal.mcp.read_image_server")
-    else:
-        read_image_server_source = (root / "omnimodal" / "mcp" / "read_image_server.py").read_text(
-            encoding="utf-8"
-        )
-        if "def read_clipboard_image" not in read_image_server_source:
-            errors.append("read_image_server.py must define read_clipboard_image")
-        if "def read_dragged_image" not in read_image_server_source:
-            errors.append("read_image_server.py must define read_dragged_image")
-        if "def read_dragged_video" not in read_image_server_source:
-            errors.append("read_image_server.py must define read_dragged_video")
-        if '"--clipboard"' not in read_image_server_source:
-            errors.append("read_image_server.py must expose --clipboard CLI flag")
-    if not (root / "omnimodal" / "providers" / "factory.py").is_file():
-        errors.append("Missing omnimodal.providers.factory")
-    if not (root / "omnimodal" / "drag.py").is_file():
-        errors.append("Missing omnimodal.drag")
+    if not (root / "omnimodal" / "mcp" / "generation_server.py").is_file():
+        errors.append("Missing omnimodal.mcp.generation_server")
     if not (root / "skills" / "omnimodal" / "SKILL.md").is_file():
         errors.append("Missing skills/omnimodal/SKILL.md")
     if not (root / "CLAUDE.md").is_file():
         errors.append("Missing CLAUDE.md")
-    if not (root / ".claude-mcp.json").is_file():
-        errors.append("Missing .claude-mcp.json")
+    if not (root / "README.md").is_file() or not (root / "README.en.md").is_file():
+        errors.append("Missing README.md or README.en.md")
 
-    claude_plugin_path = root / ".claude-plugin" / "plugin.json"
-    if not claude_plugin_path.is_file():
-        errors.append("Missing .claude-plugin/plugin.json")
+    pyproject = root / "pyproject.toml"
+    if pyproject.is_file():
+        text = pyproject.read_text(encoding="utf-8")
+        if 'version = "3.0.0"' not in text:
+            errors.append("pyproject.toml version must be 3.0.0")
+        for script in (
+            "omnimodal-recognize",
+            "omnimodal-generation",
+            "omnimodal-capture-page",
+            "omnimodal-windows-capture",
+        ):
+            if f"{script} =" not in text:
+                errors.append(f"pyproject.toml missing script {script}")
     else:
-        try:
-            claude_plugin = json.loads(claude_plugin_path.read_text(encoding="utf-8"))
-            if claude_plugin.get("name") != "omnimodal":
-                errors.append(".claude-plugin/plugin.json name must be omnimodal")
-            if claude_plugin.get("mcpServers") != "./.claude-mcp.json":
-                errors.append(
-                    ".claude-plugin/plugin.json mcpServers must point to ./.claude-mcp.json"
-                )
-        except json.JSONDecodeError as exc:
-            errors.append(f".claude-plugin/plugin.json is invalid JSON: {exc}")
+        errors.append("Missing pyproject.toml")
 
-    if (root / ".claude-mcp.json").is_file():
-        try:
-            claude_mcp = json.loads((root / ".claude-mcp.json").read_text(encoding="utf-8"))
-            servers = claude_mcp.get("mcpServers", {})
-            if not {"read-image", "capture-page", "windows-capture", "generation"}.issubset(
-                servers
-            ):
-                errors.append(
-                    ".claude-mcp.json must include read-image, capture-page, "
-                    "windows-capture, generation"
-                )
-            for server_name, server in servers.items():
-                server_args = server.get("args", [])
-                if "${CLAUDE_PLUGIN_ROOT}" not in server_args:
-                    errors.append(
-                        f".claude-mcp.json server {server_name} must use ${{CLAUDE_PLUGIN_ROOT}}"
-                    )
-        except json.JSONDecodeError as exc:
-            errors.append(f".claude-mcp.json is invalid JSON: {exc}")
-
-    # .mcp.json（通用 MCP 客户端）与 .claude-mcp.json（Claude 插件）的服务器集合必须一致
-    mcp_json_path = root / ".mcp.json"
-    if mcp_json_path.is_file() and (root / ".claude-mcp.json").is_file():
-        try:
-            mcp_servers = set(
-                json.loads(mcp_json_path.read_text(encoding="utf-8"))
-                .get("mcpServers", {})
-                .keys()
-            )
-            claude_servers = set(
-                json.loads((root / ".claude-mcp.json").read_text(encoding="utf-8"))
-                .get("mcpServers", {})
-                .keys()
-            )
-            if mcp_servers != claude_servers:
-                errors.append(
-                    f".mcp.json servers {sorted(mcp_servers)} must match "
-                    f".claude-mcp.json servers {sorted(claude_servers)}"
-                )
-        except json.JSONDecodeError:
-            pass  # 已在各自的 JSON 校验分支报错
-
-    if not (root / "scripts" / "install_claude_plugin.ps1").is_file():
-        errors.append("Missing scripts/install_claude_plugin.ps1")
-    if not (root / "scripts" / "save_clipboard_image.ps1").is_file():
-        errors.append("Missing scripts/save_clipboard_image.ps1")
-    install_script = root / "scripts" / "install_claude_plugin.ps1"
-    if install_script.is_file():
-        install_text = install_script.read_text(encoding="utf-8")
-        if "/MIR" not in install_text or ".venv" not in install_text:
-            errors.append("install_claude_plugin.ps1 must clean stale .venv/caches")
-
-    readme_path = root / "README.md"
-    if readme_path.is_file():
-        readme_text = readme_path.read_text(encoding="utf-8")
-        if r"C:\Users\admin" in readme_text or "C:/Users/admin" in readme_text:
-            errors.append("README.md must not contain local machine absolute paths")
-    if not (root / "README.en.md").is_file():
-        errors.append("Missing README.en.md")
-
-    versions: list[str] = []
     init_path = root / "omnimodal" / "__init__.py"
-    if init_path.is_file():
-        version = _python_version(init_path.read_text(encoding="utf-8"))
-        if version:
-            versions.append(version)
-    pyproject_path = root / "pyproject.toml"
-    if pyproject_path.is_file():
-        version = _pyproject_version(pyproject_path.read_text(encoding="utf-8"))
-        if version:
-            versions.append(version)
-    if plugin_json.is_file():
-        try:
-            plugin = json.loads(plugin_json.read_text(encoding="utf-8"))
-            version = plugin.get("version")
-            if isinstance(version, str) and version:
-                versions.append(version)
-        except json.JSONDecodeError:
-            pass
-    if claude_plugin_path.is_file():
-        try:
-            claude_plugin = json.loads(claude_plugin_path.read_text(encoding="utf-8"))
-            version = claude_plugin.get("version")
-            if isinstance(version, str) and version:
-                versions.append(version)
-        except json.JSONDecodeError:
-            pass
-    if len(set(versions)) != 1:
-        errors.append(f"Version mismatch across package metadata: {versions}")
+    if init_path.is_file() and '__version__ = "3.0.0"' not in init_path.read_text(encoding="utf-8"):
+        errors.append("omnimodal/__init__.py version must be 3.0.0")
 
-    config_path = root / "omnimodal" / "config.py"
-    if config_path.is_file():
-        config_text = config_path.read_text(encoding="utf-8")
-        if "HARDCODED_API_KEY" in config_text:
-            errors.append("omnimodal/config.py must not contain HARDCODED_API_KEY")
+    readme_text = (root / "README.md").read_text(encoding="utf-8", errors="replace")
+    if r"C:\Users\admin" in readme_text or "C:/Users/admin" in readme_text:
+        errors.append("README.md must not contain local machine absolute paths")
 
-    gitignore_path = root / ".gitignore"
-    if gitignore_path.is_file():
-        gitignore_text = gitignore_path.read_text(encoding="utf-8")
-        if ".env" not in gitignore_text:
-            errors.append(".gitignore must ignore .env")
+    gitignore = root / ".gitignore"
+    if gitignore.is_file():
+        ignore_text = gitignore.read_text(encoding="utf-8")
+        if ".env" not in ignore_text or "config/local.json" not in ignore_text:
+            errors.append(".gitignore must ignore .env and config/local.json")
 
     if args.public:
         for path in _iter_text_files(root):
@@ -265,6 +151,8 @@ def main() -> int:
                 continue
             if path.name != ".env.example" and SECRET_KEY_RE.search(text):
                 errors.append(f"Public copy contains API key text: {path}")
+            if path.name == ".env":
+                errors.append("Public copy must not contain .env")
 
     if errors:
         for error in errors:

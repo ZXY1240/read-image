@@ -53,25 +53,25 @@ def test_normalize_actions_keeps_scroll_selector() -> None:
 
 
 def test_wait_until_default_and_validation(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("CAPTURE_PAGE_WAIT_UNTIL", raising=False)
+    monkeypatch.delenv("OMNIMODAL_CAPTURE_PAGE_WAIT_UNTIL", raising=False)
     assert _wait_until() == "domcontentloaded"
-    monkeypatch.setenv("CAPTURE_PAGE_WAIT_UNTIL", "networkidle")
+    monkeypatch.setenv("OMNIMODAL_CAPTURE_PAGE_WAIT_UNTIL", "networkidle")
     assert _wait_until() == "networkidle"
-    monkeypatch.setenv("CAPTURE_PAGE_WAIT_UNTIL", "invalid")
+    monkeypatch.setenv("OMNIMODAL_CAPTURE_PAGE_WAIT_UNTIL", "invalid")
     assert _wait_until() == "domcontentloaded"
 
 
 def test_settle_ms_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("CAPTURE_PAGE_SETTLE_MS", raising=False)
+    monkeypatch.delenv("OMNIMODAL_CAPTURE_PAGE_SETTLE_MS", raising=False)
     assert _settle_ms() == 500
-    monkeypatch.setenv("CAPTURE_PAGE_SETTLE_MS", "1200")
+    monkeypatch.setenv("OMNIMODAL_CAPTURE_PAGE_SETTLE_MS", "1200")
     assert _settle_ms() == 1200
-    monkeypatch.setenv("CAPTURE_PAGE_SETTLE_MS", "bad")
+    monkeypatch.setenv("OMNIMODAL_CAPTURE_PAGE_SETTLE_MS", "bad")
     assert _settle_ms() == 500
 
 
 def test_max_full_page_height_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("CAPTURE_PAGE_MAX_FULL_PAGE_HEIGHT", raising=False)
+    monkeypatch.delenv("OMNIMODAL_CAPTURE_PAGE_MAX_FULL_PAGE_HEIGHT", raising=False)
     assert _max_full_page_height() == 12000
-    monkeypatch.setenv("CAPTURE_PAGE_MAX_FULL_PAGE_HEIGHT", "8000")
+    monkeypatch.setenv("OMNIMODAL_CAPTURE_PAGE_MAX_FULL_PAGE_HEIGHT", "8000")
     assert _max_full_page_height() == 8000

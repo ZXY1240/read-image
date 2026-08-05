@@ -20,7 +20,7 @@ from omnimodal.errors import (
 from omnimodal.logging import configure_logging
 from omnimodal.urls import validate_remote_url
 
-logger = configure_logging("read-image-http")
+logger = configure_logging("omnimodal-http")
 _DATA_URL_TOKEN = re.compile(r"(data:[^,]+;base64,)[A-Za-z0-9+/=]+")
 _LONG_BASE64_TOKEN = re.compile(r"[A-Za-z0-9+/]{80,}={0,2}")
 _QUERY_PARAM_TOKEN = re.compile(r"([?&][^=&\s]+=)[^&\s]+")

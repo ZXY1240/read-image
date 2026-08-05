@@ -1,51 +1,51 @@
 {
   "mcpServers": {
-    "read-image": {
+    "omnimodal-recognize": {
       "command": "uv",
       "args": [
         "run",
         "--project",
         "${CLAUDE_PLUGIN_ROOT}",
-        "read-image-vision"
+        "omnimodal-recognize"
       ],
       "env": {
-        "READ_IMAGE_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
+        "OMNIMODAL_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
       }
     },
-    "capture-page": {
+    "omnimodal-capture-page": {
       "command": "uv",
       "args": [
         "run",
         "--project",
         "${CLAUDE_PLUGIN_ROOT}",
-        "read-image-capture-page"
+        "omnimodal-capture-page"
       ],
       "env": {
-        "READ_IMAGE_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
+        "OMNIMODAL_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
       }
     },
-    "windows-capture": {
+    "omnimodal-windows-capture": {
       "command": "uv",
       "args": [
         "run",
         "--project",
         "${CLAUDE_PLUGIN_ROOT}",
-        "read-image-windows-capture"
+        "omnimodal-windows-capture"
       ],
       "env": {
-        "READ_IMAGE_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
+        "OMNIMODAL_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
       }
     },
-    "generation": {
+    "omnimodal-generation": {
       "command": "uv",
       "args": [
         "run",
         "--project",
         "${CLAUDE_PLUGIN_ROOT}",
-        "read-image-generation"
+        "omnimodal-generation"
       ],
       "env": {
-        "READ_IMAGE_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
+        "OMNIMODAL_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
       }
     }
   }
