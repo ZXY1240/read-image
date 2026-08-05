@@ -29,11 +29,11 @@
   {
     "model": "qwen3.7-max",
     "kind": "image_video",
-    "ok": false,
-    "elapsed_sec": 1.87,
-    "result_preview": null,
+    "ok": true,
+    "elapsed_sec": 1.69,
+    "result_preview": "OMNIMODAL 3.0 PROBE\nHello Qwen",
     "files_count": 0,
-    "error": "ReadImageError: 不支持此视频格式。请先用格式转换工具把视频转成 MP4 后再试。"
+    "error": null
   },
   {
     "model": "qwen3.5-ocr",
