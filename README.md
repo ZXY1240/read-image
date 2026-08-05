@@ -75,6 +75,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install_claude_plugin.ps1
 - `omnimodal_get_task_result(task_id)`
 
 生成工具必须传 `confirm=true` 才会调用付费接口。生成结果默认保存到 `~/.omnimodal/outputs`。
+生成完成后直接返回结果路径，不要自动再调用识别工具验证；只有用户明确要求检查生成结果时才追加识别。
 
 视频生成分辨率只支持 `720P/1080P`，传入 `480P` 会自动升级为 `720P`。
 `omnimodal_generate_audio` 的 `kind` 支持 `tts`、`clone`、`voice_design`、`music`；其中 `music` 使用 `fun-music-v1`，该模型目前是阿里云邀测接口，若账号未开通会返回 `AccessDenied`。

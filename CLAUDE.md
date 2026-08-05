@@ -17,6 +17,7 @@
 
 - `omnimodal_generate_image`、`omnimodal_generate_video`、`omnimodal_generate_video_from_image`、`omnimodal_edit_video`、`omnimodal_generate_audio`。
 - 生成工具必须设置 `confirm=true` 才会实际调用付费接口；否则只返回预计费用。
+- 生成完成后直接返回结果路径，不要自动再调用识别工具验证；除非用户明确要求检查生成结果。
 - 异步任务可用 `omnimodal_get_task_result(task_id)` 查询。
 
 ## Claude 桌面端

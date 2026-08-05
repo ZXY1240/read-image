@@ -28,6 +28,7 @@ Omnimodal gives text-only models multimodal capabilities: recognize images, vide
 - `omnimodal_get_task_result(task_id)`
 
 Generation tools only call paid APIs when `confirm=true`. Results are saved to `~/.omnimodal/outputs`.
+After generation, return the result path directly; do not automatically recognize it unless the user explicitly asks to verify the output.
 
 Video generation resolution supports `720P/1080P`; `480P` is upgraded to `720P`.
 For `omnimodal_generate_audio`, `kind` supports `tts`, `clone`, `voice_design`, and `music`.
