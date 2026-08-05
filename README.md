@@ -4,6 +4,17 @@ Omnimodal 是给纯文本主模型（DeepSeek、Codex 文本模型等）使用�
 
 [English](README.en.md)
 
+## 项目定位
+
+Omnimodal 不是模型封装，而是一套面向 Agent 的 MCP 多模态能力层。DeepSeek 等纯文本模型目前缺少原生视觉与音频能力；Omnimodal 在不更换主模型的前提下，通过标准 MCP 工具让 Agent 获得媒体感知、生成和处理能力。
+
+设计目标：
+
+- 工具名、参数和返回格式稳定，便于 Agent 自动调用。
+- 识别和生成分离，生成后不自动重复识别，避免浪费 tokens。
+- 支持批量、剪贴板、拖拽、网页截图和 Windows 原生截图等 Agent 常用交互。
+- 默认带费用确认、超时返回 task_id、媒体格式转换/压缩、日志脱敏和远程 URL 防护。
+
 ## 功能
 
 - 图片识别：单图、批量、剪贴板、拖拽图片。
@@ -14,6 +25,28 @@ Omnimodal 是给纯文本主模型（DeepSeek、Codex 文本模型等）使用�
 - 音频生成：TTS、声音克隆、声音设计、音乐生成。
 - 网页截图：Playwright 动态交互截图。
 - Windows 截图：全屏、主屏、指定窗口截图。
+
+## DeepSeek Harness 接入
+
+当前项目已具备作为 DSH 生态 plugin / skill / MCP 组件接入的条件：
+
+- 提供 `omnimodal-recognize`、`omnimodal-generation`、`omnimodal-capture-page`、`omnimodal-windows-capture` 四个 stdio MCP server。
+- 工具命名、配置和返回格式已稳定，适配 Agent Harness 的自动工具发现与调用。
+- 图片、视频、音频识别和生成均支持异步任务，超时后返回 `task_id` 可继续查询。
+- DSH 开放后，可优先完成 MCP 注册、工具清单、媒体上传/清理和费用确认适配。
+
+## 架构
+
+```text
+Agent (Codex / Claude Code / DSH)
+         │  MCP stdio
+         ▼
+omnimodal-recognize / omnimodal-generation
+omnimodal-capture-page / omnimodal-windows-capture
+         │  HTTP
+         ▼
+Qwen / DashScope APIs
+```
 
 ## 安装
 
@@ -144,3 +177,8 @@ uv run --project <插件根目录> omnimodal-recognize --audio <音频路径> --
 - 网页截图失败：确认 Playwright 浏览器已安装，或设置 `OMNIMODAL_CAPTURE_PAGE_BROWSER=msedge` / `chrome`。
 - Windows 截图失败：先用 `omnimodal_list_windows()` 查看准确窗口标题。
 - 生成超时：生成任务会返回 `task_id`，用 `omnimodal_get_task_result` 查询。
+
+## 维护者
+
+- GitHub：https://github.com/good-boy4069
+- 项目地址：https://github.com/good-boy4069/Deepseek-omnimodal

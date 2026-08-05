@@ -56,5 +56,7 @@ jobs:
           }
       - name: Tests
         env:
-          RUN_WINDOWS_CAPTURE_INTEGRATION: "1"
+          # GitHub Actions runners do not provide a stable interactive desktop;
+          # real window capture is covered by the local integration test.
+          RUN_WINDOWS_CAPTURE_INTEGRATION: "0"
         run: uv run pytest

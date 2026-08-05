@@ -179,6 +179,7 @@ def test_read_clipboard_image_returns_vision_result(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr("omnimodal.mcp.read_image_server.os.name", "nt")
     clipboard_png = tmp_path / "clipboard.png"
     clipboard_png.write_bytes(b"fake-png")
     monkeypatch.setattr(
@@ -203,6 +204,7 @@ def test_read_clipboard_image_returns_vision_result(
 def test_read_clipboard_image_reports_missing_image(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr("omnimodal.mcp.read_image_server.os.name", "nt")
     monkeypatch.setattr(
         read_image_server.subprocess,
         "run",

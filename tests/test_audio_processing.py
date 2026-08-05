@@ -14,6 +14,8 @@ import pytest
 from omnimodal import audio_processing
 from omnimodal.errors import ReadImageError
 
+pytestmark = pytest.mark.usefixtures("fake_api_key")
+
 
 class FakeStream:
     """SSE 流式响应的最小 stand-in（analyze_audio 走 http_client.stream）。"""

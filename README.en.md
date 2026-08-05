@@ -2,6 +2,39 @@
 
 Omnimodal gives text-only models multimodal capabilities: recognize images, video, and audio, and generate images, video, and audio through Qwen/DashScope.
 
+## Positioning
+
+Omnimodal is an MCP-based multimodal capability layer for text-only agents, including DeepSeek. Instead of replacing the underlying model, it exposes stable MCP tools so agents can perceive, process, and generate image, video, and audio media.
+
+Design goals:
+
+- Stable tool names, arguments, and return formats for agent automation.
+- Recognition and generation are separated; generated output is not automatically recognized again.
+- Batch, clipboard, dragged media, web capture, and native Windows capture are supported.
+- Cost confirmation, async `task_id`, media conversion/compression, log redaction, and remote URL protection are built in.
+
+## DeepSeek Harness Integration
+
+The project is ready to be registered as a plugin, skill, or MCP component in the DeepSeek Harness ecosystem:
+
+- Four stdio MCP servers: `omnimodal-recognize`, `omnimodal-generation`, `omnimodal-capture-page`, and `omnimodal-windows-capture`.
+- Tool names, configuration, and return formats are stable.
+- Image, video, and audio recognition and generation support async tasks with `task_id`.
+- When DSH is available, MCP registration, tool discovery, media upload/cleanup, and cost confirmation can be adapted first.
+
+## Architecture
+
+```text
+Agent (Codex / Claude Code / DSH)
+         │  MCP stdio
+         ▼
+omnimodal-recognize / omnimodal-generation
+omnimodal-capture-page / omnimodal-windows-capture
+         │  HTTP
+         ▼
+Qwen / DashScope APIs
+```
+
 ## Tools
 
 ### Recognition
@@ -91,3 +124,8 @@ Important environment variables:
 - Remote URLs block private, local, and cloud metadata addresses by default.
 - Logs redact API keys, query parameters, Base64, and media bodies.
 - Generation tools require explicit cost confirmation.
+
+## Maintainer
+
+- GitHub: https://github.com/good-boy4069
+- Repository: https://github.com/good-boy4069/Deepseek-omnimodal

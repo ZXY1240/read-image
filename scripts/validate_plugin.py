@@ -92,6 +92,14 @@ def main() -> int:
                 errors.append(f"{manifest_name} name must be omnimodal")
             if manifest.get("version") != EXPECTED_VERSION:
                 errors.append(f"{manifest_name} version must be {EXPECTED_VERSION}")
+            author = manifest.get("author", {})
+            if isinstance(author, dict) and author.get("name") != "good-boy4069":
+                errors.append(f"{manifest_name} author must be good-boy4069")
+            if (
+                manifest_name == ".codex-plugin/plugin.json"
+                and manifest.get("interface", {}).get("developerName") != "good-boy4069"
+            ):
+                errors.append(".codex-plugin developerName must be good-boy4069")
         except json.JSONDecodeError as exc:
             errors.append(f"{manifest_name} is invalid JSON: {exc}")
 

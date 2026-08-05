@@ -3,8 +3,8 @@
   "version": "3.0.0",
   "description": "Omnimodal plugin for Claude Code: recognize and generate images, video, and audio through Qwen/DashScope.",
   "author": {
-    "name": "ZXY1240",
-    "url": "https://github.com/ZXY1240"
+    "name": "good-boy4069",
+    "url": "https://github.com/good-boy4069"
   },
   "repository": "https://github.com/good-boy4069/Deepseek-omnimodal",
   "license": "MIT",
@@ -16,7 +16,9 @@
     "tts",
     "omnimodal",
     "mcp",
-    "qwen"
+    "qwen",
+    "deepseek",
+    "agent-harness"
   ],
   "mcpServers": "./.claude-mcp.json"
 }

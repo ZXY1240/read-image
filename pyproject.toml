@@ -9,7 +9,7 @@ description = "Omnimodal plugin for text-only models: recognize and generate ima
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "ZXY1240" }]
+authors = [{ name = "good-boy4069" }]
 dependencies = [
     "httpx>=0.27,<1.0",
     "imageio-ffmpeg>=0.4,<1.0",

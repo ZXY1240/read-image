@@ -15,11 +15,13 @@
     "mcp",
     "read-video",
     "screenshot",
-    "qwen"
+    "qwen",
+    "deepseek",
+    "agent-harness"
   ],
   "author": {
-    "name": "ZXY1240",
-    "url": "https://github.com/ZXY1240"
+    "name": "good-boy4069",
+    "url": "https://github.com/good-boy4069"
   },
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
@@ -27,7 +29,7 @@
     "displayName": "Omnimodal",
     "shortDescription": "Recognize and generate images, video, and audio with Qwen/DashScope",
     "longDescription": "Adds omnimodal_recognize_*, omnimodal_generate_*, omnimodal_capture_page, and native Windows omnimodal_capture_windows/omnimodal_list_windows MCP tools.",
-    "developerName": "ZXY1240",
+    "developerName": "good-boy4069",
     "composerIcon": "./assets/icon.svg",
     "websiteURL": "https://github.com/good-boy4069/Deepseek-omnimodal",
     "privacyPolicyURL": "https://github.com/good-boy4069/Deepseek-omnimodal/blob/main/PRIVACY.md",
