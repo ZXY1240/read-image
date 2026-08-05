@@ -171,8 +171,6 @@ def read_clipboard_image(
     mode: str = DEFAULT_MODE,
 ) -> str:
     """保存并读取 Windows 剪贴板图片（同步实现，供 CLI 与内部调用）。"""
-    effective_task = task.strip() if task and task.strip() else DEFAULT_TASK
-    profile_for_mode(mode)
     if os.name != "nt":
         raise ReadImageError(
             tr(
@@ -180,6 +178,8 @@ def read_clipboard_image(
                 "read_clipboard_image is only supported on Windows.",
             )
         )
+    effective_task = task.strip() if task and task.strip() else DEFAULT_TASK
+    profile_for_mode(mode)
     if not CLIPBOARD_SAVE_SCRIPT.is_file():
         raise ReadImageError(
             tr(
