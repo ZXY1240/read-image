@@ -1,0 +1,26 @@
+{
+  "quick": {
+    "thinking": false,
+    "max_tokens": 512
+  },
+  "standard": {
+    "thinking": false,
+    "max_tokens": 2048
+  },
+  "full": {
+    "thinking": false,
+    "max_tokens": null
+  },
+  "quick_analysis": {
+    "thinking": true,
+    "max_tokens": 512
+  },
+  "balanced_analysis": {
+    "thinking": true,
+    "max_tokens": 2048
+  },
+  "deep_analysis": {
+    "thinking": true,
+    "max_tokens": null
+  }
+}

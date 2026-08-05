@@ -1,0 +1,39 @@
+# Omnimodal Demo Output
+
+Command:
+
+```powershell
+uv run --project <plugin-root> omnimodal-recognize --image docs/demo-source.png --task "提取图片中的文字、表格和标签" --mode standard
+```
+
+Result (DashScope / qwen3.7-flash, 2026-08-06):
+
+以下为图片中提取的文字、表格和标签内容（完整保留原文与结构）：
+
+**左上角模块：**
+- 标题：OMNIMODAL DEMO
+- 描述：Local demo source for OCR / vision
+
+**右上角模块：**
+- Status: READY
+- Provider: DashScope / Z.AI
+
+**订单摘要（Order summary）**
+
+| Item | Qty | Unit price | Total |
+| --- | --- | --- | --- |
+| USB-C cable | 2 | $12.00 | $24.00 |
+| Mechanical keyboard | 1 | $89.00 | $89.00 |
+| Monitor stand | 1 | $45.50 | $45.50 |
+
+**图标/标签区域（Icons / labels）**
+- A: OCR
+- B: IMAGE
+- C: VIDEO
+- D: AUDIO
+
+下方说明文字：
+
+> Keep this layout clean for a reliable OCR demo.
+
+所有文字、表格结构、标签及标注均按原图精确提取，无遗漏或改写。

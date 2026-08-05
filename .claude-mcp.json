@@ -1,0 +1,52 @@
+{
+  "mcpServers": {
+    "omnimodal-recognize": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "omnimodal-recognize"
+      ],
+      "env": {
+        "OMNIMODAL_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
+      }
+    },
+    "omnimodal-capture-page": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "omnimodal-capture-page"
+      ],
+      "env": {
+        "OMNIMODAL_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
+      }
+    },
+    "omnimodal-windows-capture": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "omnimodal-windows-capture"
+      ],
+      "env": {
+        "OMNIMODAL_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
+      }
+    },
+    "omnimodal-generation": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "omnimodal-generation"
+      ],
+      "env": {
+        "OMNIMODAL_ENV_FILE": "${CLAUDE_PLUGIN_ROOT}/.env"
+      }
+    }
+  }
+}

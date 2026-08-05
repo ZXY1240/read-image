@@ -1,0 +1,26 @@
+{
+  "name": "omnimodal",
+  "version": "3.1.0",
+  "description": "Omnimodal plugin for Claude Code: recognize and generate images, video, and audio through Qwen, Z.AI, or OpenAI-compatible APIs.",
+  "author": {
+    "name": "good-boy4069",
+    "url": "https://github.com/good-boy4069"
+  },
+  "repository": "https://github.com/good-boy4069/Deepseek-omnimodal",
+  "license": "MIT",
+  "keywords": [
+    "vision",
+    "audio",
+    "generation",
+    "wanx",
+    "tts",
+    "omnimodal",
+    "mcp",
+    "qwen",
+    "zai",
+    "glm",
+    "deepseek",
+    "agent-harness"
+  ],
+  "mcpServers": "./.claude-mcp.json"
+}
