@@ -75,7 +75,10 @@ def test_scan_dragged_video_matches_extension(
 ) -> None:
     monkeypatch.setattr(drag, "drag_dirs", lambda: [str(tmp_path)])
     monkeypatch.setattr(drag, "drag_window_minutes", lambda: 5)
-    (tmp_path / "pasted_video.mp4").write_bytes(b"video-bytes")
+    now = time.time()
+    path = tmp_path / "pasted_video.mp4"
+    path.write_bytes(b"video-bytes")
+    os.utime(path, (now, now))
 
     candidates = drag.scan_dragged_media("video")
     assert len(candidates) == 1

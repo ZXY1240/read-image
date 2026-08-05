@@ -179,7 +179,7 @@ def test_read_clipboard_image_returns_vision_result(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("omnimodal.mcp.read_image_server.os.name", "nt")
+    monkeypatch.setattr(read_image_server, "_is_windows", lambda: True)
     clipboard_png = tmp_path / "clipboard.png"
     clipboard_png.write_bytes(b"fake-png")
     monkeypatch.setattr(
@@ -204,7 +204,7 @@ def test_read_clipboard_image_returns_vision_result(
 def test_read_clipboard_image_reports_missing_image(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("omnimodal.mcp.read_image_server.os.name", "nt")
+    monkeypatch.setattr(read_image_server, "_is_windows", lambda: True)
     monkeypatch.setattr(
         read_image_server.subprocess,
         "run",
@@ -223,7 +223,7 @@ def test_read_clipboard_image_reports_missing_image(
 def test_read_clipboard_image_reports_non_windows(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("omnimodal.mcp.read_image_server.os.name", "posix")
+    monkeypatch.setattr(read_image_server, "_is_windows", lambda: False)
     with pytest.raises(ReadImageError) as exc_info:
         read_image_server.read_clipboard_image("task", "quick")
     assert "仅支持 Windows" in str(exc_info.value)

@@ -46,6 +46,10 @@ BATCH_TIMEOUT_BUFFER_SEC = 30
 CLIPBOARD_SAVE_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "save_clipboard_image.ps1"
 
 
+def _is_windows() -> bool:
+    return os.name == "nt"
+
+
 def _format_slice_results(results: list[str]) -> str:
     if len(results) == 1:
         return results[0]
@@ -171,7 +175,7 @@ def read_clipboard_image(
     mode: str = DEFAULT_MODE,
 ) -> str:
     """保存并读取 Windows 剪贴板图片（同步实现，供 CLI 与内部调用）。"""
-    if os.name != "nt":
+    if not _is_windows():
         raise ReadImageError(
             tr(
                 "read_clipboard_image 仅支持 Windows。",
