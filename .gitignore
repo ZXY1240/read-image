@@ -21,3 +21,4 @@ worktrees/
 Thumbs.db
 .vscode/
 .idea/
+.coverage

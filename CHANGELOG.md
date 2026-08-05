@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.1.0
+
+- 修复第二份锐评（v2.0.0 评审）P0+P1 问题：
+  - `upload.py` 文件句柄改用 with 管理，避免泄漏。
+  - `get_generation_result` 由无效桩改为真实任务状态查询（返回 result_url/error）。
+  - 价格标注四处统一（Field description / _*_spec() / README / docstring），并加防漂移测试。
+  - `.mcp.json` 补 generation server，validate_plugin 增加两配置文件服务器一致性校验。
+  - `video_worker_count` 非法值改为继续尝试下一个变量名（原直接返回默认值）。
+  - 默认 Provider 修正为 openai_compatible + qwen3-vl-flash（与文档一致），豆包显式配置仍可用。
+  - `analyze_audio` 本地音频 base64 构造修复（oss:// URL 不再被误包 base64）；小文件走内联 base64、大文件走临时上传。
+  - `WINDOWS_CAPTURE_DIR` 统一走沙箱校验。
+  - `poll_status` 对 4xx 不再重试（客户端错误重试无意义）。
+  - api.py 消除对 `_provider._client` 的直接访问（新增 `attach_client` 公开方法）。
+  - 新增 `trf()` 参数化翻译，迁移 6 处 f-string 预插值调用点（i18n 不再形同虚设）。
+  - capture_page / windows_capture 临时目录：失败时清理、成功保留交付物、顺带清理 24h 前旧目录。
+  - 视频拖拽无候选提示修正（视频无法复制到剪贴板，改为引导保存到路径）。
+- 新模块补测试：audio_processing（10 用例）、upload（4 用例）、generation_server（10 用例）、workers（4 用例）。
+- CI 加覆盖率门禁（pytest-cov，阈值 60%，当前实际 ~69%）。
+- README/README.en 开头补项目定位说明（给 DeepSeek 等纯文本主模型补齐多模态能力）。
+
 ## v2.0.0
 
 - 项目更名为 omnimodal（原 read-image），包名 `read_image` → `omnimodal`，仓库迁移至 https://github.com/good-boy4069/Deepseek-omnimodal。

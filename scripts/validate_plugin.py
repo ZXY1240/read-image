@@ -159,9 +159,12 @@ def main() -> int:
         try:
             claude_mcp = json.loads((root / ".claude-mcp.json").read_text(encoding="utf-8"))
             servers = claude_mcp.get("mcpServers", {})
-            if not {"read-image", "capture-page", "windows-capture"}.issubset(servers):
+            if not {"read-image", "capture-page", "windows-capture", "generation"}.issubset(
+                servers
+            ):
                 errors.append(
-                    ".claude-mcp.json must include read-image, capture-page, windows-capture"
+                    ".claude-mcp.json must include read-image, capture-page, "
+                    "windows-capture, generation"
                 )
             for server_name, server in servers.items():
                 server_args = server.get("args", [])
@@ -171,6 +174,28 @@ def main() -> int:
                     )
         except json.JSONDecodeError as exc:
             errors.append(f".claude-mcp.json is invalid JSON: {exc}")
+
+    # .mcp.json（通用 MCP 客户端）与 .claude-mcp.json（Claude 插件）的服务器集合必须一致
+    mcp_json_path = root / ".mcp.json"
+    if mcp_json_path.is_file() and (root / ".claude-mcp.json").is_file():
+        try:
+            mcp_servers = set(
+                json.loads(mcp_json_path.read_text(encoding="utf-8"))
+                .get("mcpServers", {})
+                .keys()
+            )
+            claude_servers = set(
+                json.loads((root / ".claude-mcp.json").read_text(encoding="utf-8"))
+                .get("mcpServers", {})
+                .keys()
+            )
+            if mcp_servers != claude_servers:
+                errors.append(
+                    f".mcp.json servers {sorted(mcp_servers)} must match "
+                    f".claude-mcp.json servers {sorted(claude_servers)}"
+                )
+        except json.JSONDecodeError:
+            pass  # 已在各自的 JSON 校验分支报错
 
     if not (root / "scripts" / "install_claude_plugin.ps1").is_file():
         errors.append("Missing scripts/install_claude_plugin.ps1")

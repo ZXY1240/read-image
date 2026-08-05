@@ -366,11 +366,11 @@ def read_dragged_video(
     if not candidates:
         raise ReadImageError(
             tr(
-                "Claude 桌面端拖入的视频不落盘，无法扫描。请复制进剪贴板后调用 "
-                "read_clipboard_image，或保存为文件后提供路径调用 read_video。",
+                "Claude 桌面端拖入的视频不落盘，无法扫描。视频无法复制到剪贴板，"
+                "请把视频保存到明确路径后调用 read_video。",
                 "Dragged videos in Claude Desktop are not written to disk and cannot be "
-                "scanned. Copy the image to the clipboard and call read_clipboard_image, "
-                "or save the video to a file and call read_video with the path.",
+                "scanned. Videos cannot be copied to the clipboard; save the video to "
+                "a file and call read_video with the path.",
             )
         )
     if len(candidates) == 1:

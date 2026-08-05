@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "omnimodal"
-version = "2.0.0"
+version = "2.1.0"
 description = "Codex plugin that gives text-only models Doubao vision support for images, video, web pages, and Windows screenshots."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -41,7 +41,8 @@ include = ["omnimodal*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+# 覆盖率门禁：阻止无测试的新功能合入（当前实际 ~69%）
+addopts = "-q --cov=omnimodal --cov-fail-under=60"
 
 [tool.ruff]
 line-length = 100
@@ -54,3 +55,8 @@ select = ["E", "F", "I", "B", "UP"]
 python_version = "3.10"
 ignore_missing_imports = true
 packages = ["omnimodal"]
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=7.1.0",
+]

@@ -1,4 +1,6 @@
-# Omnimodal v2.0.0
+# Omnimodal v2.1.0
+
+> **Deepseek-omnimodal is an MCP plugin that gives text-only main models (DeepSeek etc.) full multimodal abilities** — see images/videos, hear audio, transcribe speech, and generate images/videos/speech. It solves "the main model cannot see images, hear audio, or generate media".
 
 > This project was formerly named read-image and has been upgraded to omnimodal (full multimodality).
 

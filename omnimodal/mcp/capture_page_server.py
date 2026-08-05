@@ -4,8 +4,10 @@ import argparse
 import asyncio
 import json
 import os
+import shutil
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import Annotated, Any, Literal, cast
 
@@ -21,7 +23,7 @@ from playwright.async_api import (
 )
 from pydantic import Field
 
-from omnimodal.errors import CapturePageError, ReadImageError, tr
+from omnimodal.errors import CapturePageError, ReadImageError, tr, trf
 from omnimodal.logging import configure_logging
 from omnimodal.mcp.common import EXTERNAL_SEND_ANNOTATIONS, run_cli
 from omnimodal.paths import ensure_allowed_output_dir
@@ -258,6 +260,26 @@ async def _apply_action(page: Page, action: dict[str, Any], timeout_ms: int) -> 
         await page.keyboard.press(action["key"])
 
 
+def _finalize_capture_dir(path: Path) -> None:
+    """处理临时截图目录：成功时保留交付物，失败时清理，并清理过期旧目录。"""
+    try:
+        has_files = any(path.iterdir()) if path.exists() else False
+    except OSError:
+        has_files = False
+    if not has_files:
+        shutil.rmtree(path, ignore_errors=True)
+    stale_before = time.time() - 24 * 3600
+    try:
+        for entry in Path(tempfile.gettempdir()).glob("read-image-capture-*"):
+            try:
+                if entry.is_dir() and entry.stat().st_mtime < stale_before:
+                    shutil.rmtree(entry, ignore_errors=True)
+            except OSError:
+                continue
+    except OSError:
+        pass
+
+
 async def _capture_page(
     url: str,
     actions: list[dict[str, Any]] | None,
@@ -275,43 +297,49 @@ async def _capture_page(
         int(os.environ.get("CAPTURE_PAGE_TIMEOUT_SEC", DEFAULT_TIMEOUT_SEC)) * 1000,
     )
 
+    cleanup_dir: Path | None = None
     if output_dir:
         try:
             output_path = await asyncio.to_thread(ensure_allowed_output_dir, output_dir)
         except ReadImageError as exc:
             raise CapturePageError(str(exc)) from exc
     else:
-        output_path = Path(tempfile.mkdtemp(prefix="read-image-capture-"))
+        cleanup_dir = output_path = Path(tempfile.mkdtemp(prefix="read-image-capture-"))
 
     try:
-        async with async_playwright() as playwright:
-            browser = await _launch_browser(playwright)
-            try:
-                page = await browser.new_page(viewport={"width": width, "height": height})
-                await page.goto(
-                    url,
-                    wait_until=_wait_until(),
-                    timeout=timeout_ms,
-                )
-                await page.wait_for_timeout(_settle_ms())
-                paths = [await _screenshot(page, output_path, 1)]
-                for index, action in enumerate(normalized_actions, start=2):
-                    await _apply_action(page, action, timeout_ms)
-                    paths.append(await _screenshot(page, output_path, index))
-            finally:
-                await browser.close()
-    except CapturePageError:
-        raise
-    except PlaywrightTimeoutError as exc:
-        raise CapturePageError(
-            tr(f"网页操作超时：{exc}", f"Web page operation timed out: {exc}")
-        ) from exc
-    except Exception as exc:
-        raise CapturePageError(
-            tr(f"网页截图失败：{exc}", f"Web page capture failed: {exc}")
-        ) from exc
-
-    return "\n".join(f"{index}. {path}" for index, path in enumerate(paths, start=1))
+        try:
+            async with async_playwright() as playwright:
+                browser = await _launch_browser(playwright)
+                try:
+                    page = await browser.new_page(viewport={"width": width, "height": height})
+                    await page.goto(
+                        url,
+                        wait_until=_wait_until(),
+                        timeout=timeout_ms,
+                    )
+                    await page.wait_for_timeout(_settle_ms())
+                    paths = [await _screenshot(page, output_path, 1)]
+                    for index, action in enumerate(normalized_actions, start=2):
+                        await _apply_action(page, action, timeout_ms)
+                        paths.append(await _screenshot(page, output_path, index))
+                finally:
+                    await browser.close()
+            return "\n".join(f"{index}. {path}" for index, path in enumerate(paths, start=1))
+        except CapturePageError:
+            raise
+        except PlaywrightTimeoutError as exc:
+            raise CapturePageError(
+                trf("网页操作超时：{exc}", "Web page operation timed out: {exc}", exc=exc)
+            ) from exc
+        except Exception as exc:
+            raise CapturePageError(
+                trf("网页截图失败：{exc}", "Web page capture failed: {exc}", exc=exc)
+            ) from exc
+    finally:
+        # 临时输出目录（未传 output_dir 时创建）：截图文件是交付物不能立即删；
+        # 失败时目录不完整可删；无论成败都顺带清理 24h 前的旧临时目录防累积。
+        if cleanup_dir is not None:
+            _finalize_capture_dir(cleanup_dir)
 
 
 @mcp.tool(annotations=EXTERNAL_SEND_ANNOTATIONS)

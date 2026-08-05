@@ -30,7 +30,7 @@ class VisionClient:
     ):
         self._provider = provider or create_provider()
         if client is not None:
-            self._provider._client = client
+            self._provider.attach_client(client)
 
     @property
     def base_url(self) -> str:
@@ -195,7 +195,7 @@ def _sync_module_http_client() -> None:
     快照;模块级入口始终面向全局共享的 http_client,调用前同步一次,
     保证模块级入口与 default_client 共享同一 provider 和同一 client。
     """
-    default_client.provider._client = http_client
+    default_client.provider.attach_client(http_client)
 
 
 def upload_video_file(path: str, timeout_sec: int | None = None) -> str:

@@ -4,6 +4,7 @@ import argparse
 import base64
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -110,10 +111,25 @@ def _clean_powershell_error(raw: str) -> str:
 def _default_capture_dir() -> Path:
     configured = os.environ.get("WINDOWS_CAPTURE_DIR", "").strip()
     if configured:
-        path = Path(configured).expanduser().resolve()
-        path.mkdir(parents=True, exist_ok=True)
-        return path
+        # WINDOWS_CAPTURE_DIR 是用户显式配置的输出目录，但仍走统一沙箱校验
+        # （以自身作为额外允许根目录，防止相对路径/异常解析问题）
+        extra = [configured] if configured else []
+        return ensure_allowed_output_dir(configured, extra_allowed_roots=extra)
     return Path(tempfile.mkdtemp(prefix="windows-capture-"))
+
+
+def _purge_stale_capture_dirs() -> None:
+    """清理 24 小时前的旧临时截图目录，防止长期运行累积。"""
+    stale_before = time.time() - 24 * 3600
+    try:
+        for entry in Path(tempfile.gettempdir()).glob("windows-capture-*"):
+            try:
+                if entry.is_dir() and entry.stat().st_mtime < stale_before:
+                    shutil.rmtree(entry, ignore_errors=True)
+            except OSError:
+                continue
+    except OSError:
+        pass
 
 
 def _safe_filename(value: str) -> str:
@@ -167,6 +183,7 @@ def capture_windows(
             )
         )
 
+    temp_dir_created: Path | None = None
     if output_dir:
         try:
             extra_roots = [
@@ -182,6 +199,9 @@ def capture_windows(
             raise WindowsCaptureError(str(exc)) from exc
     else:
         output_path = _default_capture_dir()
+        # 仅 mkdtemp 分支创建临时目录（WINDOWS_CAPTURE_DIR 是用户配置目录，不算泄漏）
+        if not os.environ.get("WINDOWS_CAPTURE_DIR", "").strip():
+            temp_dir_created = output_path
 
     if normalized_mode == "window":
         filename = f"window-{_safe_filename(window or 'window')}-{int(time.time())}.png"
@@ -194,20 +214,30 @@ def capture_windows(
     env["WINDOWS_CAPTURE_OUTPUT"] = str(target)
     env["WINDOWS_CAPTURE_WINDOW"] = window or ""
     # 采样步长经 WINDOWS_CAPTURE_SAMPLE_STEP 透传（ps1 内默认 50），未设置时脚本自行兜底
-    _run_powershell(
-        _CAPTURE_PS,
-        timeout_sec=WINDOWS_CAPTURE_TIMEOUT_SEC,
-        env=env,
-    )
-
-    if not target.is_file():
-        raise WindowsCaptureError(
-            tr(
-                f"截图失败，未生成文件：{target}",
-                f"Screenshot failed, file not generated: {target}",
-            )
+    try:
+        _run_powershell(
+            _CAPTURE_PS,
+            timeout_sec=WINDOWS_CAPTURE_TIMEOUT_SEC,
+            env=env,
         )
-    return str(target)
+
+        if not target.is_file():
+            raise WindowsCaptureError(
+                tr(
+                    f"截图失败，未生成文件：{target}",
+                    f"Screenshot failed, file not generated: {target}",
+                )
+            )
+        return str(target)
+    except BaseException:
+        # 失败时临时目录里没有可用的交付物，直接清理
+        if temp_dir_created is not None:
+            shutil.rmtree(temp_dir_created, ignore_errors=True)
+        raise
+    finally:
+        # 成功时截图文件是交付物保留；顺带清理 24h 前的旧临时目录
+        if temp_dir_created is not None:
+            _purge_stale_capture_dirs()
 
 
 def _build_parser() -> argparse.ArgumentParser:

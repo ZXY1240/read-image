@@ -1,4 +1,6 @@
-# Omnimodal v2.0.0
+# Omnimodal v2.1.0
+
+> **Deepseek-omnimodal 是给 DeepSeek 等纯文本主模型补齐多模态能力的 MCP 插件**——让主模型能看图片/视频、听音频、识别语音，并生成图片/视频/语音。解决"主模型看不见图、听不见声、不能生成"的问题。
 
 > 本项目原名 read-image，已升级为全模态（omnimodal）。
 

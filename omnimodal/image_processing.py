@@ -14,7 +14,7 @@ from omnimodal.config import (
     extreme_aspect_ratio_limit,
     image_format,
 )
-from omnimodal.errors import ReadImageError, tr
+from omnimodal.errors import ReadImageError, tr, trf
 
 _IMAGE_FORMAT_MIME = {
     "JPEG": "image/jpeg",
@@ -207,7 +207,9 @@ def _read_image_source(raw: str) -> tuple[Image.Image, str, bool]:
         path = Path.cwd() / path
     path = path.resolve()
     if not path.is_file():
-        raise ReadImageError(tr(f"找不到图片文件：{path}", f"Image file not found: {path}"))
+        raise ReadImageError(
+            trf("找不到图片文件：{path}", "Image file not found: {path}", path=path)
+        )
     try:
         data = path.read_bytes()
     except PermissionError as exc:

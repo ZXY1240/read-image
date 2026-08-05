@@ -22,6 +22,7 @@ from omnimodal.errors import (
     is_media_error,
     normalize_error_code,
     tr,
+    trf,
 )
 from omnimodal.urls import validate_remote_url
 
@@ -110,7 +111,9 @@ def _transcode_video(
         ) from exc
     if result.returncode != 0 or not output_path.is_file():
         detail = result.stderr.strip()[-500:] if result.stderr else "(无输出)"
-        raise ReadImageError(tr(f"视频转换失败：{detail}", f"Video conversion failed: {detail}"))
+        raise ReadImageError(
+            trf("视频转换失败：{detail}", "Video conversion failed: {detail}", detail=detail)
+        )
 
 
 def _remote_size(url: str) -> int | None:
@@ -182,7 +185,9 @@ def _download_video_url(
         raise
     except Exception as exc:
         part.unlink(missing_ok=True)
-        raise ReadImageError(tr(f"下载视频失败：{exc}", f"Video download failed: {exc}")) from exc
+        raise ReadImageError(
+            trf("下载视频失败：{exc}", "Video download failed: {exc}", exc=exc)
+        ) from exc
 
 
 def _is_video_media_error(exc: Exception) -> bool:
@@ -429,5 +434,7 @@ def analyze_video(video: str, task: str, mode: str | None) -> str:
             path = Path.cwd() / path
         path = path.resolve()
         if not path.is_file():
-            raise ReadImageError(tr(f"找不到视频文件：{path}", f"Video file not found: {path}"))
+            raise ReadImageError(
+                trf("找不到视频文件：{path}", "Video file not found: {path}", path=path)
+            )
         return _analyze_local_video(path, task, mode, tmp_dir)

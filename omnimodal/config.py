@@ -8,8 +8,11 @@ from dotenv import load_dotenv
 
 DEFAULT_TASK = "详细描述图片内容"
 DEFAULT_BATCH_TASK = "提取每张图片中的可见内容，并按图返回"
-DEFAULT_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"
-DEFAULT_MODEL = "doubao-seed-2-1-turbo-260628"
+DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+DEFAULT_MODEL = "qwen3-vl-flash"
+# 豆包默认值（显式 READ_IMAGE_PROVIDER=doubao 且未配 URL/MODEL 时使用）
+DOUBAO_DEFAULT_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"
+DOUBAO_DEFAULT_MODEL = "doubao-seed-2-1-turbo-260628"
 DEFAULT_MAX_DIMENSION = 2048
 DEFAULT_IMAGE_FORMAT = "auto"
 DEFAULT_JPEG_QUALITY = 90
@@ -29,7 +32,7 @@ DEFAULT_VIDEO_TIMEOUT_SEC = 300
 DEFAULT_CACHE_MAX_ENTRIES = 256
 DEFAULT_CACHE_USE_TASK = True
 DEFAULT_CACHE_TTL_SEC = 300
-DEFAULT_PROVIDER = "doubao"
+DEFAULT_PROVIDER = "openai_compatible"
 DEFAULT_OPENAI_THINKING_PARAM = "auto"
 DEFAULT_EXTREME_ASPECT_RATIO_LIMIT = 8
 DEFAULT_DRAG_WINDOW_MIN = 30
@@ -230,5 +233,6 @@ def video_worker_count() -> int:
             try:
                 return max(1, int(raw))
             except ValueError:
-                return DEFAULT_VIDEO_WORKERS
+                # 非法值继续尝试下一个变量名，而不是直接返回默认值
+                continue
     return DEFAULT_VIDEO_WORKERS

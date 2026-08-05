@@ -87,6 +87,33 @@
         "READ_IMAGE_LOG_LEVEL"
       ],
       "tool_timeout_sec": 120
+    },
+    "generation": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        ".",
+        "read-image-generation"
+      ],
+      "cwd": ".",
+      "env_vars": [
+        "READ_IMAGE_API_KEY",
+        "READ_IMAGE_PROVIDER",
+        "READ_IMAGE_BASE_URL",
+        "READ_IMAGE_MODEL",
+        "READ_IMAGE_ENV_FILE",
+        "READ_IMAGE_LOG_LEVEL",
+        "READ_IMAGE_LANGUAGE",
+        "READ_IMAGE_DEFAULT_TIER",
+        "READ_IMAGE_GENERATION_TIMEOUT_SEC",
+        "READ_IMAGE_MAX_VIDEO_DURATION",
+        "READ_IMAGE_GENERATION_OUTPUT_DIR",
+        "READ_IMAGE_ALLOWED_OUTPUT_DIRS",
+        "READ_IMAGE_ALLOW_PRIVATE_URLS"
+      ],
+      "tool_timeout_sec": 900
     }
   }
 }

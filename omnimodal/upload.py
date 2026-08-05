@@ -95,12 +95,13 @@ def _upload_form(
         "key": key,
     }
     try:
-        response = http_client.post(
-            upload_host,
-            data=fields,
-            files={"file": (file_path.name, file_path.open("rb"), content_type)},
-            timeout=_UPLOAD_TIMEOUT_SEC,
-        )
+        with file_path.open("rb") as f:
+            response = http_client.post(
+                upload_host,
+                data=fields,
+                files={"file": (file_path.name, f, content_type)},
+                timeout=_UPLOAD_TIMEOUT_SEC,
+            )
     except Exception as exc:
         raise ReadImageError(
             tr(

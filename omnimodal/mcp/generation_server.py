@@ -122,7 +122,7 @@ def _tts_spec(tier: str) -> GenerationSpec:
 async def generate_image(
     prompt: Annotated[str, Field(description="图像描述，≤500 字")],
     tier: Annotated[str, Field(
-        description="档位: standard(0.14元)/pro(0.2元)",
+        description="档位: standard(qwen-image-2.0 0.2元/张)/pro(wan2.7-image-pro 0.5元/张)",
         default="standard"
         )] = "standard",
     size: Annotated[str, Field(description="尺寸如 1024*1024", default="1024*1024")] = "1024*1024",
@@ -161,7 +161,10 @@ async def generate_image(
 async def generate_video(
     prompt: Annotated[str, Field(description="视频内容描述")],
     tier: Annotated[str, Field(
-        description="档位: standard(0.24元/秒)/pro(wan2.6 0.45元/秒)/max(happyhorse 1.2元/秒)",
+        description=(
+            "档位: standard(wan2.7-t2v 0.6元/秒)/pro(wan2.7-t2v 1元/秒)"
+            "/max(happyhorse-1.1-t2v 0.72元/秒)"
+        ),
         default="standard"
         )] = "standard",
     duration: Annotated[int, Field(description="秒数", default=5)] = 5,
@@ -212,7 +215,10 @@ async def generate_video(
 async def generate_video_from_image(
     image: Annotated[str, Field(description="首帧图片路径或URL")],
     prompt: Annotated[str, Field(description="视频内容描述")],
-    tier: Annotated[str, Field(description="档位", default="standard")] = "standard",
+    tier: Annotated[str, Field(
+        description="档位: standard(wan2.7-i2v 0.6元/秒)/pro(happyhorse-1.1-i2v 0.72元/秒)",
+        default="standard",
+    )] = "standard",
     wait: Annotated[
         bool, Field(description="true=等待完成，false=返回task_id", default=True)
     ] = True,
@@ -257,7 +263,10 @@ async def generate_speech(
         default="longxiaochun_v2"
         )] = "longxiaochun_v2",
     tier: Annotated[str, Field(
-        description="档位: standard(cosyvoice-v2)/pro(v3)",
+        description=(
+            "档位: standard(qwen-audio-3.0-tts 1元/万字符)"
+            "/pro(cosyvoice-v3.5-plus 1.5元/万字符)"
+        ),
         default="standard"
         )] = "standard",
     ctx: Context | None = None,
@@ -326,14 +335,29 @@ async def transcribe_audio(
 async def get_generation_result(
     task_id: Annotated[str, Field(description="生成/转写任务的 task_id")],
 ) -> dict[str, Any]:
-    """查询之前提交的异步生成/转写任务结果。"""
-    return {
-        "task_id": task_id,
-        "note": tr(
-            "结果下载请使用对应工具重新等待或查询。",
-            "Query via the matching tool.",
-        ),
-    }
+    """查询之前提交的异步生成/转写任务结果。
+
+    SUCCEEDED 时返回结果 URL（图片/视频）或转写文本；
+    FAILED/CANCELED 时返回错误信息；处理中返回当前状态。
+    """
+    client = GenerationClient(GenerationSpec(endpoint=T2I_ENDPOINT, model=""))
+    data = client.poll_status(task_id)
+    output = data.get("output", {}) if isinstance(data, dict) else {}
+    status = output.get("task_status")
+    if status == "SUCCEEDED":
+        results = output.get("results")
+        result_url: Any = None
+        if isinstance(results, list) and results:
+            first = results[0]
+            if isinstance(first, dict):
+                result_url = first.get("url") or first.get("video_url")
+        if result_url is None:
+            result_url = output.get("video_url")
+        return {"task_id": task_id, "status": status, "result_url": result_url}
+    if status in {"FAILED", "CANCELED"}:
+        message = output.get("message") or output.get("error") or ""
+        return {"task_id": task_id, "status": status, "error": str(message)}
+    return {"task_id": task_id, "status": status}
 
 
 def _report(ctx: Context | None):

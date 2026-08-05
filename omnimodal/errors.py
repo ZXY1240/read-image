@@ -118,6 +118,16 @@ def tr(zh: str, en: str) -> str:
     return en if language() == "en" else zh
 
 
+def trf(zh: str, en: str, **kwargs: object) -> str:
+    """参数化翻译：tr() 选语言后再做 str.format 插值。
+
+    不要在调用点用 f-string 预插值——f-string 在 tr() 之前求值，
+    两种语言收到的都是同一份已插值文本，i18n 形同虚设。
+    用法：trf("文件 {path} 不存在", "File {path} not found", path=path)
+    """
+    return tr(zh, en).format(**kwargs)
+
+
 class PluginError(RuntimeError):
     """Base class for all omnimodal plugin errors."""
 

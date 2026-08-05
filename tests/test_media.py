@@ -21,6 +21,7 @@ from omnimodal.media import (
     video_download_max_bytes,
     video_max_bytes,
 )
+from omnimodal.providers import doubao as provider_doubao
 from omnimodal.video_processing import (
     _analyze_local_video,
     _analyze_local_video_files,
@@ -46,11 +47,18 @@ def _mock_http_client(monkeypatch: pytest.MonkeyPatch, handler: Any) -> httpx.Cl
 def _mock_video_api(monkeypatch: pytest.MonkeyPatch, handler: Any) -> httpx.Client:
     client = httpx.Client(transport=httpx.MockTransport(handler))
     monkeypatch.setattr(api, "http_client", client)
-    # 视频 files API 是豆包语义，测试不依赖本机 .env 的 provider 配置
-    monkeypatch.delenv("READ_IMAGE_PROVIDER", raising=False)
-    monkeypatch.delenv("READ_IMAGE_BASE_URL", raising=False)
-    monkeypatch.delenv("READ_IMAGE_MODEL", raising=False)
-    monkeypatch.setattr(api, "default_client", api.VisionClient(client=client))
+    # 视频 files API 是豆包语义，显式用豆包 provider（默认 provider 是 qwen）
+    monkeypatch.setattr(
+        api,
+        "default_client",
+        api.VisionClient(
+            provider=provider_doubao.DoubaoProvider(
+                "https://ark.cn-beijing.volces.com/api/v3",
+                "doubao-seed-2-1-turbo-260628",
+            ),
+            client=client,
+        ),
+    )
     monkeypatch.setattr("omnimodal.video_processing.validate_remote_url", lambda url: url)
     return client
 

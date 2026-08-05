@@ -131,7 +131,11 @@ class GenerationClient:
 
     # ---- poll ----
     def poll_status(self, task_id: str) -> dict[str, Any]:
-        """Query task status. Retries transient failures (idempotent)."""
+        """Query task status. Retries transient failures (idempotent).
+
+        4xx 是客户端错误（如 task_id 失效），重试无意义，直接抛错；
+        仅 5xx / 网络错误 / 429 重试。
+        """
         url = f"https://dashscope.aliyuncs.com/api/v1/tasks/{task_id}"
         last_error: Exception | None = None
         for _attempt in range(DEFAULT_POLL_RETRIES + 1):
@@ -147,6 +151,13 @@ class GenerationClient:
                 except json.JSONDecodeError:
                     last_error = ReadImageError("poll response not JSON")
                     continue
+            if 400 <= response.status_code < 500:
+                raise ReadImageError(
+                    tr(
+                        "查询任务状态失败（HTTP {code}）。",
+                        "Failed to query task status (HTTP {code}).",
+                    ).format(code=response.status_code)
+                )
             last_error = ReadImageError(
                 f"poll HTTP {response.status_code}: {response.text[:200]}"
             )

@@ -106,11 +106,14 @@ def test_video_keep_audio_config(monkeypatch: pytest.MonkeyPatch) -> None:
     assert video_keep_audio() is True
 
 
-def test_provider_defaults_to_doubao(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_provider_defaults_to_openai_compatible(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.delenv("READ_IMAGE_PROVIDER", raising=False)
     monkeypatch.delenv("READ_IMAGE_BASE_URL", raising=False)
     monkeypatch.delenv("READ_IMAGE_MODEL", raising=False)
-    assert provider_name() == "doubao"
+    # 默认 qwen3-vl-flash（DashScope），与文档一致
+    assert provider_name() == "openai_compatible"
 
 
 def test_provider_auto_uses_openai_compatible_when_base_and_model_set(
@@ -140,6 +143,17 @@ def test_video_worker_count_prefers_new_env(
     monkeypatch.setenv("READ_IMAGE_VIDEO_WORKERS", "2")
     assert video_worker_count() == 5
     monkeypatch.delenv("READ_VIDEO_WORKERS")
+    assert video_worker_count() == 2
+
+
+def test_video_worker_count_invalid_first_falls_back(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # 第一个变量非法时继续尝试第二个，而不是直接返回默认值
+    monkeypatch.setenv("READ_VIDEO_WORKERS", "abc")
+    monkeypatch.setenv("READ_IMAGE_VIDEO_WORKERS", "3")
+    assert video_worker_count() == 3
+    monkeypatch.delenv("READ_IMAGE_VIDEO_WORKERS")
     assert video_worker_count() == 2
 
 

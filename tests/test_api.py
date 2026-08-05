@@ -22,6 +22,20 @@ from omnimodal.providers import doubao as provider_doubao
 pytestmark = pytest.mark.usefixtures("fake_api_key")
 
 
+@pytest.fixture()
+def doubao_default_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    """把 default_client 换成 DoubaoProvider，供 Files API 相关测试使用。
+
+    默认 provider 是 openai_compatible（qwen3-vl-flash），不支持 Files API；
+    这些测试针对豆包的上传/删除行为，需显式指定豆包。
+    """
+    provider = provider_doubao.DoubaoProvider(
+        "https://ark.cn-beijing.volces.com/api/v3",
+        "doubao-seed-2-1-turbo-260628",
+    )
+    monkeypatch.setattr(api, "default_client", api.VisionClient(provider=provider))
+
+
 def _json_response(
     status_code: int,
     payload: dict[str, Any],
@@ -32,17 +46,19 @@ def _json_response(
 
 def _client_with_handler(
     handler: Any,
+    provider: provider_base.VisionProvider | None = None,
 ) -> tuple[api.VisionClient, httpx.Client]:
     transport = httpx.MockTransport(handler)
     http_client = httpx.Client(transport=transport)
-    return api.VisionClient(client=http_client), http_client
+    return api.VisionClient(provider=provider, client=http_client), http_client
 
 
 def test_build_image_payload() -> None:
     client = api.VisionClient()
     payload = client.build_payload("image", "data:image/jpeg;base64,AAAA", "task", "standard")
     assert payload["model"] == DEFAULT_MODEL
-    assert payload["thinking"]["type"] == "disabled"
+    # 默认 provider 是 openai_compatible（qwen），thinking 用 enable_thinking 顶层参数
+    assert payload["enable_thinking"] is False
     assert payload["max_tokens"] == 2048
     content = payload["messages"][1]["content"]
     assert content[0] == {"type": "text", "text": "task"}
@@ -54,13 +70,13 @@ def test_build_video_payload() -> None:
     payload = client.build_payload(
         "video", "https://example.invalid/v.mp4", "task", "deep_analysis"
     )
-    assert payload["thinking"]["type"] == "enabled"
+    assert payload["enable_thinking"] is True
     assert "max_tokens" not in payload
     content = payload["messages"][1]["content"]
     assert content[1]["type"] == "video_url"
 
 
-def test_call_video_file_id_builds_file_id_payload() -> None:
+def test_call_video_file_id_builds_file_id_payload(doubao_default_client: None) -> None:
     captured: dict[str, Any] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -70,7 +86,10 @@ def test_call_video_file_id_builds_file_id_payload() -> None:
             {"choices": [{"message": {"content": "ok"}}]},
         )
 
-    client, _ = _client_with_handler(handler)
+    client, _ = _client_with_handler(handler, provider=provider_doubao.DoubaoProvider(
+        "https://ark.cn-beijing.volces.com/api/v3",
+        "doubao-seed-2-1-turbo-260628",
+    ))
     assert client.call_video_file_id("file-abc", "task", "quick") == "ok"
     body = json.loads(captured["request"].content)
     video_url = body["messages"][1]["content"][1]["video_url"]
@@ -79,6 +98,7 @@ def test_call_video_file_id_builds_file_id_payload() -> None:
 
 def test_module_call_video_file_id_uses_default_client(
     monkeypatch: pytest.MonkeyPatch,
+    doubao_default_client: None,
 ) -> None:
     captured: dict[str, Any] = {}
 
@@ -91,7 +111,14 @@ def test_module_call_video_file_id_uses_default_client(
 
     transport = httpx.MockTransport(handler)
     http_client = httpx.Client(transport=transport)
-    monkeypatch.setattr(api, "default_client", api.VisionClient(client=http_client))
+    monkeypatch.setattr(
+        api,
+        "default_client",
+        api.VisionClient(provider=provider_doubao.DoubaoProvider(
+        "https://ark.cn-beijing.volces.com/api/v3",
+        "doubao-seed-2-1-turbo-260628",
+    ), client=http_client),
+    )
     assert api.call_video_file_id("file-abc", "task", "quick") == "ok"
     body = json.loads(captured["request"].content)
     video_url = body["messages"][1]["content"][1]["video_url"]
@@ -101,6 +128,7 @@ def test_module_call_video_file_id_uses_default_client(
 def test_upload_video_file_posts_multipart_and_returns_id(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    doubao_default_client: None,
 ) -> None:
     video = tmp_path / "tiny.mp4"
     video.write_bytes(b"fake-video")
@@ -140,6 +168,7 @@ def test_upload_video_file_posts_multipart_and_returns_id(
 
 def test_delete_video_file_calls_delete_endpoint(
     monkeypatch: pytest.MonkeyPatch,
+    doubao_default_client: None,
 ) -> None:
     captured: dict[str, Any] = {}
 
@@ -159,6 +188,7 @@ def test_delete_video_file_calls_delete_endpoint(
 def test_delete_video_file_swallows_cleanup_error(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
+    doubao_default_client: None,
 ) -> None:
     monkeypatch.setattr(http.logger, "propagate", True)
 
@@ -177,6 +207,7 @@ def test_delete_video_file_swallows_cleanup_error(
 
 def test_delete_video_file_retries_then_succeeds(
     monkeypatch: pytest.MonkeyPatch,
+    doubao_default_client: None,
 ) -> None:
     calls = 0
 
@@ -197,6 +228,7 @@ def test_delete_video_file_retries_then_succeeds(
 def test_delete_video_file_does_not_log_api_detail(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
+    doubao_default_client: None,
 ) -> None:
     monkeypatch.setattr(http.logger, "propagate", True)
 
@@ -225,6 +257,7 @@ def test_redact_sensitive_text_hides_query_params_and_data_urls() -> None:
 def test_upload_video_file_raises_on_http_error(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    doubao_default_client: None,
 ) -> None:
     video = tmp_path / "tiny.mp4"
     video.write_bytes(b"fake-video")
@@ -249,6 +282,7 @@ def test_upload_video_file_raises_on_http_error(
 def test_upload_video_file_raises_when_poll_status_failed(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    doubao_default_client: None,
 ) -> None:
     monkeypatch.setenv("READ_IMAGE_LANGUAGE", "en")
     monkeypatch.setattr(api.time, "sleep", lambda _: None)
@@ -287,6 +321,7 @@ def test_upload_video_file_raises_when_poll_status_failed(
 def test_upload_video_file_deletes_uploaded_file_on_poll_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    doubao_default_client: None,
 ) -> None:
     monkeypatch.setenv("READ_IMAGE_LANGUAGE", "en")
     monkeypatch.setattr(api.time, "sleep", lambda _: None)
@@ -329,6 +364,7 @@ def test_upload_video_file_deletes_uploaded_file_on_poll_failure(
 def test_upload_video_file_uses_one_budget_when_upload_response_expires(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    doubao_default_client: None,
 ) -> None:
     monkeypatch.setenv("READ_IMAGE_LANGUAGE", "en")
     clock = [0.0]
@@ -365,6 +401,7 @@ def test_upload_video_file_uses_one_budget_when_upload_response_expires(
 def test_upload_video_file_uses_one_budget_during_polling(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    doubao_default_client: None,
 ) -> None:
     monkeypatch.setenv("READ_IMAGE_LANGUAGE", "en")
     clock = [0.0]
@@ -406,6 +443,7 @@ def test_upload_video_file_uses_one_budget_during_polling(
 def test_upload_video_file_429_near_deadline_raises_timeout(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    doubao_default_client: None,
 ) -> None:
     monkeypatch.setenv("READ_IMAGE_LANGUAGE", "en")
     clock = [0.0]
@@ -435,7 +473,7 @@ def test_upload_video_file_429_near_deadline_raises_timeout(
     assert calls == 1
 
 
-def test_api_error_detail_is_stored_and_not_rendered_in_str() -> None:
+def test_api_error_detail_is_stored_and_not_rendered_in_str(doubao_default_client: None) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return _json_response(
             400,
@@ -447,7 +485,10 @@ def test_api_error_detail_is_stored_and_not_rendered_in_str() -> None:
             },
         )
 
-    client, _ = _client_with_handler(handler)
+    client, _ = _client_with_handler(handler, provider=provider_doubao.DoubaoProvider(
+        "https://ark.cn-beijing.volces.com/api/v3",
+        "doubao-seed-2-1-turbo-260628",
+    ))
     with pytest.raises(ReadImageError) as exc_info:
         client.call_video_file_id("file-abc", "task", "quick")
     assert exc_info.value.detail == "file_id not supported"
@@ -457,6 +498,7 @@ def test_api_error_detail_is_stored_and_not_rendered_in_str() -> None:
 def test_upload_video_file_polls_until_processed(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    doubao_default_client: None,
 ) -> None:
     video = tmp_path / "tiny.mp4"
     video.write_bytes(b"fake-video")
@@ -504,6 +546,7 @@ def test_upload_video_file_polls_until_processed(
 def test_upload_video_file_retries_rate_limit(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    doubao_default_client: None,
 ) -> None:
     monkeypatch.setattr(provider_doubao, "MAX_RATE_LIMIT_RETRIES", 1)
     monkeypatch.setattr(api.time, "sleep", lambda _: None)

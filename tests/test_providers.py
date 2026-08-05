@@ -14,13 +14,28 @@ from omnimodal.providers.openai_compatible import OpenAICompatibleProvider
 pytestmark = pytest.mark.usefixtures("fake_api_key")
 
 
-def test_create_provider_defaults_to_doubao(
+def test_create_provider_defaults_to_openai_compatible(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("READ_IMAGE_PROVIDER", raising=False)
     monkeypatch.delenv("READ_IMAGE_BASE_URL", raising=False)
     monkeypatch.delenv("READ_IMAGE_MODEL", raising=False)
-    assert isinstance(create_provider(), DoubaoProvider)
+    provider = create_provider()
+    assert isinstance(provider, OpenAICompatibleProvider)
+    assert provider.base_url == "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    assert provider.model == "qwen3-vl-flash"
+
+
+def test_create_provider_doubao_explicit_uses_doubao_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("READ_IMAGE_PROVIDER", "doubao")
+    monkeypatch.delenv("READ_IMAGE_BASE_URL", raising=False)
+    monkeypatch.delenv("READ_IMAGE_MODEL", raising=False)
+    provider = create_provider()
+    assert isinstance(provider, DoubaoProvider)
+    assert provider.base_url == "https://ark.cn-beijing.volces.com/api/v3"
+    assert provider.model == "doubao-seed-2-1-turbo-260628"
 
 
 def test_create_provider_selects_openai_compatible(
@@ -35,14 +50,16 @@ def test_create_provider_selects_openai_compatible(
     assert provider.model == "glm-5v-turbo"
 
 
-def test_create_provider_openai_compatible_requires_config(
+def test_create_provider_openai_compatible_uses_defaults_without_config(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # 默认值兜底：不配置也能创建（qwen3-vl-flash + DashScope）
     monkeypatch.setenv("READ_IMAGE_PROVIDER", "openai_compatible")
     monkeypatch.delenv("READ_IMAGE_BASE_URL", raising=False)
     monkeypatch.delenv("READ_IMAGE_MODEL", raising=False)
-    with pytest.raises(ReadImageError):
-        create_provider()
+    provider = create_provider()
+    assert isinstance(provider, OpenAICompatibleProvider)
+    assert provider.model == "qwen3-vl-flash"
 
 
 def test_doubao_payload_keeps_thinking_object() -> None:

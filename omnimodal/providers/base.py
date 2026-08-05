@@ -41,6 +41,10 @@ class VisionProvider(ABC):
     def cache_key(self) -> str:
         return f"{self.provider_name}:{self.model}"
 
+    def attach_client(self, client: httpx.Client) -> None:
+        """替换底层 HTTP 客户端（测试注入用），避免外部直接访问 _client。"""
+        self._client = client
+
     @abstractmethod
     def build_payload(
         self,

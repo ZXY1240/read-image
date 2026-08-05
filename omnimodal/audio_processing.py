@@ -12,6 +12,7 @@ Both accept local paths (uploaded to temporary oss:// storage) or URLs.
 
 from __future__ import annotations
 
+import base64
 import json
 from pathlib import Path
 from typing import Any
@@ -63,6 +64,29 @@ def _to_api_url(path_or_url: str, model: str) -> str:
     if _is_http_url(path_or_url):
         return path_or_url
     return get_temporary_url(path_or_url, model, content_type=_mime_for_audio(path_or_url))
+
+
+def _audio_content_item(path_or_url: str, model: str) -> dict[str, Any]:
+    """Build the omni ``input_audio`` content item for a local path or URL.
+
+    - http(s) URL → ``{"url": ...}``
+    - local file ≤10MB → inline base64 data (``data:;base64,``)
+    - local file >10MB → upload to temporary oss:// storage, pass the URL
+    - anything else (e.g. an existing ``oss://`` URL) → pass through as URL
+    """
+    if _is_http_url(path_or_url):
+        return {"type": "input_audio", "input_audio": {"url": path_or_url}}
+    if Path(path_or_url).is_file():
+        data = base64.b64encode(Path(path_or_url).read_bytes()).decode("ascii")
+        if len(data) <= OMNI_BASE64_MAX_BYTES:
+            return {
+                "type": "input_audio",
+                "input_audio": {"data": f"data:;base64,{data}"},
+            }
+        url = get_temporary_url(path_or_url, model, content_type=_mime_for_audio(path_or_url))
+        return {"type": "input_audio", "input_audio": {"url": url}}
+    # oss:// 或未知形式：按 URL 透传
+    return {"type": "input_audio", "input_audio": {"url": path_or_url}}
 
 
 # ---------------- transcription (paraformer, async task) ----------------
@@ -158,21 +182,7 @@ def analyze_audio(
         Model's text answer.
     """
     model = OMNI_MODEL_PLUS if tier == "pro" else OMNI_MODEL
-    audio_url = _to_api_url(path_or_url, model)
-
-    # omni accepts base64 (<10MB) or URL; prefer URL for local files we already
-    # uploaded, but allow direct base64 for small files to skip the upload hop.
-    content_item: dict[str, Any]
-    if not _is_http_url(audio_url):
-        content_item = {
-            "type": "input_audio",
-            "input_audio": {"data": f"data:;base64,{audio_url}"},
-        }
-    else:
-        content_item = {
-            "type": "input_audio",
-            "input_audio": {"url": audio_url},
-        }
+    content_item = _audio_content_item(path_or_url, model)
 
     profile = profile_for_mode(mode)
     payload: dict[str, Any] = {
